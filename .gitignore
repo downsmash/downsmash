@@ -1,0 +1,5 @@
+*.png
+*.tsv
+sources/*
+means/*
+__pycache__/*

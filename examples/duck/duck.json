@@ -1,0 +1,13 @@
+{
+    "filename": "sources/duck.mp4",
+    "players": {
+        "1": {
+            "name": "Duck",
+            "icon": "samus-purple"
+        },
+        "2": {
+            "tag": "Westballz",
+            "icon": "falcon-red"
+        }
+    }
+}

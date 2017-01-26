@@ -1,0 +1,13 @@
+{
+    "filename": "sources/leffen.mp4",
+    "players": {
+        "1": {
+            "name": "Leffen",
+            "icon": "fox-default"
+        },
+        "2": {
+            "tag": "Mango",
+            "icon": "falco-default"
+        }
+    }
+}

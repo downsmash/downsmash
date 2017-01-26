@@ -1,0 +1,13 @@
+{
+    "filename": "sources/bizz.mp4",
+    "players": {
+        "1": {
+            "name": "Bizzarro Flame",
+            "icon": "ganon-blue"
+        },
+        "4": {
+            "tag": "Triple R",
+            "icon": "kirby-yellow"
+        }
+    }
+}
