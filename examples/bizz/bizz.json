@@ -2,7 +2,7 @@
     "filename": "sources/bizz.mp4",
     "players": {
         "1": {
-            "name": "Bizzarro Flame",
+            "tag": "Bizzarro Flame",
             "icon": "ganon-blue"
         },
         "4": {

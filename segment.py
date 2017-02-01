@@ -3,41 +3,38 @@
 import argparse
 import cv2
 import numpy as np
+from itertools import groupby
 from sklearn.cluster import KMeans
 import json
 from random import random
 
 
-def random_frames(filename, mean_frames=50):
+def random_frames(filename, num_frames=50):
     vc = cv2.VideoCapture(filename)
 
-    frames = 0
     total_frames = vc.get(7)
 
-    while True:
+    for _ in range(num_frames):
+        frame_pos = int(random() * total_frames)
+        vc.set(1, frame_pos)
         success, frame = vc.read()
 
         if success:
-            frames += 1
-            if random() < mean_frames / total_frames:
-                yield (frames, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
-        else:
-            return
+            yield (frame_pos, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+    return
 
 
 def spaced_frames(filename, interval=150):
     vc = cv2.VideoCapture(filename)
-    frames = 0
+    total_frames = int(vc.get(7))
 
-    while True:
+    for frame_pos in range(0, total_frames, interval):
+        vc.set(1, frame_pos)
         success, frame = vc.read()
 
         if success:
-            frames += 1
-            if frames % interval == 0:
-                yield (frames, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
-        else:
-            return
+            yield (frame_pos, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+    return
 
 
 def find_best_scale(feature, scene, min_scale=0.5, max_scale=1.0, scale_delta=0.02, min_corr=0.8):
@@ -91,15 +88,15 @@ def feature_threshold_peaks(feature, scene, tolerance=0.05, max_clusters=None):
         return peaks
 
 
-def multiple_template_match(feature, source, max_clusters=None, mean_frames=50):
+def multiple_template_match(feature, source, max_clusters=None, num_frames=50, min_scale=0.5, max_scale=1.0):
     peaks = []
     best_scale_log = []
 
-    for (n, scene) in random_frames(source, mean_frames=mean_frames):
+    for (n, scene) in random_frames(source, num_frames=num_frames):
         cv2.imwrite("scene.png", scene)
         scene = cv2.imread("scene.png")
 
-        best_scale = find_best_scale(feature, scene)
+        best_scale = find_best_scale(feature, scene, min_scale=min_scale, max_scale=max_scale)
         if best_scale:
             best_scale_log += [best_scale]
             scaled_feature = cv2.resize(feature, (0, 0), fx=best_scale, fy=best_scale)
@@ -124,23 +121,28 @@ def __main__():
     source = data['filename']
 
     slots = sorted([int(port) - 1 for port in data['players'].keys()])
-    icons = [data['players'][str(slot + 1)]['icon'] for slot in slots]
+    # icons = [data['players'][str(slot + 1)]['icon'] for slot in slots]
 
     percent = cv2.imread("assets/pct.png")
     mean_best_scale, percent_locations = multiple_template_match(percent, source, max_clusters=2)
-
-    for digit in [0, 2, 4, 6, 8]:
-        feature = cv2.imread("assets/{0}_time.png".format(digit))
-        mean_best_scale, feature_locations = multiple_template_match(feature, source, mean_frames=10)
-        print(digit, feature_locations)
 
     # Estimate bounding box from percent locations
     for (slot, pos) in zip(slots, percent_locations):
         estimated_size = [x * mean_best_scale / 0.05835 for x in percent.shape[:2]]
         estimated_top = pos[0] - .871 * estimated_size[0]
         estimated_left = pos[1] - (.202 + .2381 * slot) * estimated_size[1]
-        print(pos)
-        print(estimated_size, estimated_top, estimated_left)
+        print("Found port", slot, "percent sign at", pos)
+        print("Estimated geometry:", estimated_top, estimated_left, estimated_size)
+
+    digit_locations = []
+    for digit in [2, 3, 4, 5, 6, 8]:
+        feature = cv2.imread("assets/{0}_time.png".format(digit))
+        mean_best_scale, feature_locations = multiple_template_match(feature, source, num_frames=10, min_scale=0.8)
+        digit_locations.extend(feature_locations)
+    print([x * mean_best_scale for x in feature.shape[:2]])
+
+    digit_locations = np.array(digit_locations)
+    print("Estimate of clock center:", sum(digit_locations) / len(digit_locations))
 
     # Do percent sign template matching and tabulate maximum correlation coefficients
     corr_series = []
@@ -154,12 +156,20 @@ def __main__():
 
     # Perform k-means clustering with k=2 to determine threshold value for games/gaps
     kmeans = KMeans(n_clusters=2).fit(np.array([corr for time, corr in corr_series]).reshape(-1, 1))
-    print(kmeans.cluster_centers_)
     threshold = sum(kmeans.cluster_centers_)[0] / 2
-    gamevalues = [time for time, corr in corr_series if corr >= threshold]
+    print("Threshold:", threshold)
 
-    gaps = [(this, next) for this, next in zip(gamevalues, gamevalues[1:]) if next > this + 10]
-    print(gaps)
+    games = []
+    for k, v in groupby(corr_series, lambda pt: pt[1] > threshold):
+        v = list(v)
+        if k:
+            if not games or games[-1][-1][0] + 10 <= v[0][0]:
+                games.append(v)
+            else:
+                games[-1].extend(v)
+
+    for game in games:
+        print(game[0][0], game[-1][0])
 
 
 if __name__ == "__main__":
