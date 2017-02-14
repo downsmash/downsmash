@@ -120,29 +120,28 @@ def __main__():
         data = json.load(f)
     source = data['filename']
 
-    slots = sorted([int(port) - 1 for port in data['players'].keys()])
-    # icons = [data['players'][str(slot + 1)]['icon'] for slot in slots]
-
     percent = cv2.imread("assets/pct.png")
     mean_best_scale, percent_locations = multiple_template_match(percent, source, max_clusters=2)
 
     # Estimate bounding box from percent locations
-    for (slot, pos) in zip(slots, percent_locations):
-        estimated_size = [x * mean_best_scale / 0.05835 for x in percent.shape[:2]]
-        estimated_top = pos[0] - .871 * estimated_size[0]
-        estimated_left = pos[1] - (.202 + .2381 * slot) * estimated_size[1]
-        print("Found port", slot, "percent sign at", pos)
-        print("Estimated geometry:", estimated_top, estimated_left, estimated_size)
+    estimated_height, estimated_width = [x * mean_best_scale / 0.05835 for x in percent.shape[:2]]
+    estimated_top = np.mean(percent_locations, axis=0) - .871 * estimated_height
 
     digit_locations = []
     for digit in [2, 3, 4, 5, 6, 8]:
         feature = cv2.imread("assets/{0}_time.png".format(digit))
         mean_best_scale, feature_locations = multiple_template_match(feature, source, num_frames=10, min_scale=0.8)
         digit_locations.extend(feature_locations)
-    print([x * mean_best_scale for x in feature.shape[:2]])
 
     digit_locations = np.array(digit_locations)
-    print("Estimate of clock center:", sum(digit_locations) / len(digit_locations))
+    estimated_clock_height, estimated_center = sum(digit_locations) / len(digit_locations)
+    estimated_left = estimated_center - .475 * estimated_width
+    print("Estimated left: ", estimated_center - .475 * estimated_width)
+
+    for loc in percent_locations:
+        affine_approx = (loc[1] - estimated_left) / estimated_width
+        predicted_port = (affine_approx - .119) // .2381
+        print(loc, affine_approx, predicted_port)
 
     # Do percent sign template matching and tabulate maximum correlation coefficients
     corr_series = []
@@ -170,6 +169,7 @@ def __main__():
 
     for game in games:
         print(game[0][0], game[-1][0])
+
 
 
 if __name__ == "__main__":
