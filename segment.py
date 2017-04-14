@@ -5,44 +5,146 @@ import cv2
 import numpy as np
 from itertools import groupby
 from sklearn.cluster import KMeans
+from random import randint
 # import json
 import logging
-from random import random
 
 logging.basicConfig(format="%(message)s")
 
 
-def random_frames(filename, num_frames=50):
-    vc = cv2.VideoCapture(filename)
-    total_frames = vc.get(7)
+class ROI:
 
-    for _ in range(num_frames):
-        frame_pos = int(random() * total_frames)
-        vc.set(1, frame_pos)
-        success, frame = vc.read()
+    def __init__(self, top_left, bottom_right):
+        self.top, self.left = top_left
+        self.bottom, self.right = bottom_right
 
-        if success:
-            yield (frame_pos, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
-    return
+    def __str__(self):
+        return "{0}x{1}+{2}+{3}".format(self.bottom - self.top, self.right - self.left, self.top, self.left)
+
+    def __repr__(self):
+        return "{0}x{1}+{2}+{3}".format(self.bottom - self.top, self.right - self.left, self.top, self.left)
+
+    def affine_location(self, y, x):
+        return np.array((int((1 - y) * self.top + y * self.bottom),
+                         int((1 - x) * self.left + x * self.right)))
 
 
-def spaced_frames(filename, interval=None, num_frames=None):
-    if (interval is None and num_frames is None) or None not in (interval, num_frames):
-        raise ValueError('exactly one of (interval, num_frames) must be set')
+class MatchParser:
 
-    vc = cv2.VideoCapture(filename)
-    total_frames = int(vc.get(7))
+    def __init__(self, stream, polling_interval=2, tolerance=0.05, min_gap=10):
+        self.stream = stream
+        self.polling_interval = polling_interval
+        self.tolerance = tolerance
+        self.min_gap = min_gap
 
-    if not interval:
-        interval = total_frames // num_frames
+    def parse(self):
+        self.__detect_geometry()
+        print(str(self.geometry))
+        self.__detect_ports()
+        print(self.ports)
+        for chunk in self.__detect_match_chunks():
+            print(chunk)
 
-    for frame_pos in range(0, total_frames, interval):
-        vc.set(1, frame_pos)
-        success, frame = vc.read()
+    def __detect_geometry(self):
+        percent = cv2.imread("assets/pct.png")
+        scale, percent_locations = multiple_template_match(self, percent, max_clusters=2)
 
-        if success:
-            yield (frame_pos, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
-    return
+        # Estimate bounding box from percent and clock locations
+        height, width = [x * scale / 0.05835 for x in percent.shape[:2]]
+        top = np.mean(percent_locations, axis=0)[0] - .871 * height
+
+        clock_digit_locations = []
+        for digit in [2, 3, 4, 5, 6, 8]:
+            feature = cv2.imread("assets/{0}_time.png".format(digit))
+            scale, feature_locations = multiple_template_match(self, feature, N=10, min_scale=0.8)
+
+            clock_digit_locations.extend(feature_locations)
+
+        clock_center = np.mean(clock_digit_locations, axis=0)[1]
+        left = clock_center - .475 * width
+
+        self.geometry = ROI((top, left), (top + height, left + width))
+        self.scale = np.mean([height / 411, width / 548])
+
+    def __detect_ports(self, max_error=0.04):
+        height, width = self.geometry.bottom - self.geometry.top, self.geometry.right - self.geometry.left
+
+        percent_locations = [self.geometry.affine_location(.87, .2 + .2381 * n) for n in range(4)]
+
+        percent_rois = [ROI((int(loc[0] - max_error * height),          int(loc[1] - max_error * width)),
+                            (int(loc[0] + (.06 + max_error) * height),  int(loc[1] + (.06 + max_error) * width))) for loc in percent_locations]
+
+        ports = []
+
+        percent = cv2.imread("assets/pct.png")
+        for port_number, percent_roi in enumerate(percent_rois):
+            scale, location = multiple_template_match(
+                self, percent, max_clusters=1, roi=percent_roi)
+            if scale:
+                location = location[0]
+                error = percent_locations[port_number] - location
+                logging.warn("Detected port {0} at location {1} (absolute error {2[0]}px, {2[1]}px)".format(
+                    port_number + 1, location, error))
+                port_roi = ROI(self.geometry.affine_location(.748 - max_error, .0363 + .24 * port_number - max_error) - error,
+                               self.geometry.affine_location(.928 + max_error, .2196 + .24 * port_number + max_error) - error)
+                ports.append(port_roi)
+            else:
+                ports.append(None)
+
+        self.ports = ports
+
+    def __detect_match_chunks(self, max_error=.04):
+        percent = cv2.imread("assets/pct.png")
+        corr_series = []
+
+        with open("out.tsv", "w+") as f:
+            for (time, scene) in spaced_frames(self, interval=int(self.polling_interval * 30)):
+                cv2.imwrite("scene.png", scene)
+                scene = cv2.imread("scene.png")
+
+                scaled_percent = cv2.resize(percent, (0, 0), fx=self.scale, fy=self.scale)
+                scaled_percent = cv2.Canny(scaled_percent, 50, 200)
+
+                percent_corrs = []
+                for port_number, roi in enumerate(self.ports):
+                    if roi is not None:
+                        scene_roi = scene[roi.top:roi.bottom, roi.left:roi.right]
+                        scene_roi = cv2.Canny(scene_roi, 50, 200)
+
+                        corr_map = cv2.matchTemplate(
+                            scene_roi, scaled_percent, cv2.TM_CCOEFF_NORMED)
+
+                        _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
+
+                        percent_corrs.append(max_corr)
+
+                print(round(time) / 1000, percent_corrs)
+                corr_series.append((round(time) / 1000, max(percent_corrs)))
+                f.write("{0}\t{1}\n".format(round(time) / 1000, "\t".join(str(x)
+                                                                          for x in percent_corrs)))
+
+        def moving_average(series, n=5):
+            return np.convolve(series, np.ones((n,)) / n, mode='valid')
+
+        averages = moving_average([x[1] for x in corr_series],
+                                  n=int(self.min_gap // self.polling_interval))
+        averages = zip([x[0] + self.min_gap // 2 for x in corr_series], averages)
+
+        kmeans = KMeans(n_clusters=4).fit(
+            np.array([corr for time, corr in corr_series]).reshape(-1, 1))
+
+        centers = kmeans.cluster_centers_.tolist()
+        min_cluster_idx = centers.index(min(centers))
+        points = zip([time for time, corr in corr_series], kmeans.labels_)
+
+        # threshold = sum(kmeans.cluster_centers_)[0] / 4
+        # logging.warn("Threshold is {:.4f}".format(threshold))
+
+        # Throw out the lowest cluster
+        groups = [(k, list(v)) for k, v in groupby(points, lambda pt: pt[1] != min_cluster_idx)]
+        games = [[v[0][0], v[-1][0]] for k, v in groups if k]
+
+        return games
 
 
 def find_best_scale(feature, scene, min_scale=0.5, max_scale=1.0, scale_delta=0.02, min_corr=0.8):
@@ -66,6 +168,27 @@ def find_best_scale(feature, scene, min_scale=0.5, max_scale=1.0, scale_delta=0.
         return None
 
 
+def spaced_frames(parser, interval=None, num_frames=None, fuzz=4):
+    if (interval is None and num_frames is None) or None not in (interval, num_frames):
+        raise ValueError('exactly one of (interval, num_frames) must be set')
+
+    vc = cv2.VideoCapture(parser.stream)
+    total_frames = int(vc.get(7))
+
+    if not interval:
+        interval = total_frames // num_frames
+
+    for frame_pos in range(0, total_frames, interval):
+        frame_pos += randint(-1 * fuzz, fuzz)
+        frame_pos = min([max([0, frame_pos]), total_frames])
+        vc.set(1, frame_pos)
+        success, frame = vc.read()
+
+        if success:
+            yield (vc.get(0), cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+    return
+
+
 def get_clusters(pts, max_distance=14):
     clusters = []
     for pt in pts:
@@ -79,16 +202,16 @@ def get_clusters(pts, max_distance=14):
     return clusters
 
 
-def multiple_template_match(feature, source, roi=None, max_clusters=None, num_frames=50, min_scale=0.5, max_scale=1.0, tolerance=0.05):
+def multiple_template_match(parser, feature, roi=None, max_clusters=None, N=50, min_scale=0.5, max_scale=1.0):
     peaks = []
     best_scale_log = []
 
-    for (n, scene) in spaced_frames(source, num_frames=num_frames):
+    for (n, scene) in spaced_frames(parser, num_frames=N):
         cv2.imwrite("scene.png", scene)
 
         scene = cv2.imread("scene.png")
         if roi is not None:
-            scene = scene[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
+            scene = scene[roi.top:roi.bottom, roi.left:roi.right]
 
         best_scale = find_best_scale(feature, scene, min_scale=min_scale, max_scale=max_scale)
         if best_scale:
@@ -101,7 +224,8 @@ def multiple_template_match(feature, source, roi=None, max_clusters=None, num_fr
 
             _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
 
-            good_points = zip(*np.where(corr_map >= max_corr - tolerance))
+            good_points = zip(*np.where(corr_map >= max_corr - parser.tolerance))
+
             clusters = get_clusters(good_points)
 
             these_peaks = [max(cluster, key=lambda pt: corr_map[pt]) for cluster in clusters]
@@ -112,114 +236,16 @@ def multiple_template_match(feature, source, roi=None, max_clusters=None, num_fr
             else:
                 peaks.extend(these_peaks)
 
-    feature_locations = [max(set(cluster), key=cluster.count) for cluster in get_clusters(peaks)]
+    feature_locations = [np.array(max(set(cluster), key=cluster.count))
+                         for cluster in get_clusters(peaks)]
     feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
 
     if roi is not None:
-        feature_locations = [(roi[0][0] + loc[0], roi[1][0] + loc[1]) for loc in feature_locations]
+        feature_locations = [np.array((roi.top, roi.left)) + loc for loc in feature_locations]
 
     mean_best_scale = sum(best_scale_log) / len(best_scale_log) if best_scale_log else None
 
     return (mean_best_scale, feature_locations)
-
-
-def get_stream_geometry(stream, polling_interval=2):
-    percent = cv2.imread("assets/pct.png")
-    mean_best_scale, percent_locations = multiple_template_match(percent, stream, max_clusters=2)
-
-    # Estimate bounding box from percent and clock locations
-    est_height, est_width = [x * mean_best_scale / 0.05835 for x in percent.shape[:2]]
-    est_top = np.mean(percent_locations, axis=0)[0] - .871 * est_height
-
-    clock_digit_locations = []
-    for digit in [2, 3, 4, 5, 6, 8]:
-        feature = cv2.imread("assets/{0}_time.png".format(digit))
-        mean_best_scale, feature_locations = multiple_template_match(
-            feature, stream, num_frames=10, min_scale=0.8)
-
-        clock_digit_locations.extend(feature_locations)
-
-    est_clock_center = np.mean(clock_digit_locations, axis=0)[1]
-    est_left = est_clock_center - .475 * est_width
-
-    return ((est_top, est_left), (est_top + est_height, est_left + est_width))
-
-
-def get_ports(stream, polling_interval=2, max_error=.1):
-    (est_top, est_left), (est_bottom, est_right) = get_stream_geometry(
-        stream, polling_interval=polling_interval)
-    est_height, est_width = est_bottom - est_top, est_right - est_left
-
-    est_percent_locations = [np.array((est_top + .87 * est_height,
-                                       est_left + (.2 + .2381 * n) * est_width)) for n in range(4)]
-    percent_rois = [np.array(((int(loc[0] - max_error * est_height), int(loc[0] + (.06 + max_error) * est_height)),
-                              (int(loc[1] - max_error * est_width),  int(loc[1] + (.06 + max_error) * est_width)))) for loc in est_percent_locations]
-
-    percent_locations = []
-
-    percent = cv2.imread("assets/pct.png")
-    for port_number, roi in enumerate(percent_rois):
-        scale, location = multiple_template_match(percent, stream, max_clusters=1, roi=roi)
-        if scale:
-            location = location[0]
-            percent_locations.append((port_number, location))
-            error = est_percent_locations[port_number] - location
-            logging.warn("Detected port {0} at location {1} (absolute error {2[0]:.2f}px, {2[1]:.2f}px)".format(
-                port_number + 1, location, error))
-
-
-def get_match_timestamps(stream, polling_interval=2, min_gap=10, max_error=.1):
-    (est_top, est_left), (est_bottom, est_right) = get_stream_geometry(
-        stream, polling_interval=polling_interval)
-    est_height, est_width = est_bottom - est_top, est_right - est_left
-    est_scale = np.mean([est_height / 411, est_width / 548])
-
-    # print(est_top, est_left, est_height, est_width)
-
-    est_percent_locations = [np.array((est_top + .87 * est_height,
-                                       est_left + (.2 + .2381 * n) * est_width)) for n in range(4)]
-    percent_rois = [np.array(((int(loc[0] - max_error * est_height), int(loc[0] + (.06 + max_error) * est_height)),
-                              (int(loc[1] - max_error * est_width),  int(loc[1] + (.06 + max_error) * est_width)))) for loc in est_percent_locations]
-
-    percent_locations = []
-
-    percent = cv2.imread("assets/pct.png")
-    for port_number, roi in enumerate(percent_rois):
-        scale, location = multiple_template_match(percent, stream, max_clusters=1, roi=roi)
-        if scale:
-            location = location[0]
-            percent_locations.append((port_number, location))
-            error = est_percent_locations[port_number] - location
-            logging.warn("Detected port {0} at location {1} (absolute error {2[0]:.2f}px, {2[1]:.2f}px)".format(
-                port_number + 1, location, error))
-
-    # Do percent sign template matching and tabulate maximum correlation coefficients
-    corr_series = []
-    for (n, scene) in spaced_frames(stream, interval=int(polling_interval * 30)):
-        cv2.imwrite("scene.png", scene)
-        scene = cv2.imread("scene.png")
-
-        scaled_feature = cv2.resize(percent, (0, 0), fx=est_scale, fy=est_scale)
-        corr_map = cv2.matchTemplate(scene, scaled_feature, cv2.TM_CCOEFF_NORMED)
-        corr_series += [[n / 30, max(corr_map[loc] for port, loc in percent_locations)]]
-
-    # Cluster the correlation values into probable games and probable gaps using k-means with k=2
-    kmeans = KMeans(n_clusters=2).fit(np.array([corr for time, corr in corr_series]).reshape(-1, 1))
-    threshold = sum(kmeans.cluster_centers_)[0] / 2
-    logging.warn("Threshold is {:.4f}".format(threshold))
-
-    # with open('out.tsv', 'w+') as f:
-    #     f.write("\n".join("\t".join(str(x) for x in corr) for corr in corr_series))
-
-    def moving_average(series, n=5):
-        return np.convolve(series, np.ones((n,)) / n, mode='valid')
-
-    averages = zip([x[0] + min_gap // 2 for x in corr_series], moving_average([x[1]
-                                                                               for x in corr_series], n=int(min_gap // polling_interval)))
-    groups = [(k, list(v)) for k, v in groupby(averages, lambda pt: pt[1] >= threshold * 1)]
-    games = [[v[0], v[-1]] for k, v in groups if k]
-
-    return games
 
 
 def __main__():
@@ -233,8 +259,7 @@ def __main__():
     #    data = json.load(f)
     stream = args.file
 
-    for stamp in get_match_timestamps(stream):
-        print(stamp)
+    MatchParser(stream).parse()
 
 
 if __name__ == "__main__":
