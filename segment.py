@@ -38,16 +38,14 @@ class MatchParser:
         self.min_gap = min_gap
 
     def parse(self):
-        self.__detect_geometry()
-        print(str(self.geometry))
-        self.__detect_ports()
-        print(self.ports)
-        for chunk in self.__detect_match_chunks():
-            print(chunk)
+        self.geometry = self.__detect_geometry()
+        self.ports = self.__detect_ports()
+        self.chunks = self.__detect_match_chunks()
 
     def __detect_geometry(self):
         percent = cv2.imread("assets/pct.png")
-        scale, percent_locations = multiple_template_match(self, percent, max_clusters=2)
+        scale, percent_locations = multiple_template_match(
+            self, percent, max_clusters=2)
 
         # Estimate bounding box from percent and clock locations
         height, width = [x * scale / 0.05835 for x in percent.shape[:2]]
@@ -56,20 +54,24 @@ class MatchParser:
         clock_digit_locations = []
         for digit in [2, 3, 4, 5, 6, 8]:
             feature = cv2.imread("assets/{0}_time.png".format(digit))
-            scale, feature_locations = multiple_template_match(self, feature, N=10, min_scale=0.8)
+            scale, feature_locations = multiple_template_match(
+                self, feature, N=10, min_scale=0.8)
 
             clock_digit_locations.extend(feature_locations)
 
         clock_center = np.mean(clock_digit_locations, axis=0)[1]
         left = clock_center - .475 * width
 
-        self.geometry = ROI((top, left), (top + height, left + width))
         self.scale = np.mean([height / 411, width / 548])
 
-    def __detect_ports(self, max_error=0.04):
-        height, width = self.geometry.bottom - self.geometry.top, self.geometry.right - self.geometry.left
+        return ROI((top, left), (top + height, left + width))
 
-        percent_locations = [self.geometry.affine_location(.87, .2 + .2381 * n) for n in range(4)]
+    def __detect_ports(self, max_error=0.04):
+        height, width = self.geometry.bottom - \
+            self.geometry.top, self.geometry.right - self.geometry.left
+
+        percent_locations = [
+            self.geometry.affine_location(.87, .2 + .2381 * n) for n in range(4)]
 
         percent_rois = [ROI((int(loc[0] - max_error * height),          int(loc[1] - max_error * width)),
                             (int(loc[0] + (.06 + max_error) * height),  int(loc[1] + (.06 + max_error) * width))) for loc in percent_locations]
@@ -91,44 +93,40 @@ class MatchParser:
             else:
                 ports.append(None)
 
-        self.ports = ports
+        return ports
 
     def __detect_match_chunks(self, max_error=.04):
         percent = cv2.imread("assets/pct.png")
         corr_series = []
 
-        with open("out.tsv", "w+") as f:
-            for (time, scene) in spaced_frames(self, interval=int(self.polling_interval * 30)):
-                cv2.imwrite("scene.png", scene)
-                scene = cv2.imread("scene.png")
+        for (time, scene) in spaced_frames(self, interval=int(self.polling_interval * 30)):
+            cv2.imwrite("scene.png", scene)
+            scene = cv2.imread("scene.png")
 
-                scaled_percent = cv2.resize(percent, (0, 0), fx=self.scale, fy=self.scale)
-                scaled_percent = cv2.Canny(scaled_percent, 50, 200)
+            scaled_percent = cv2.resize(
+                percent, (0, 0), fx=self.scale, fy=self.scale)
+            scaled_percent = cv2.Canny(scaled_percent, 50, 200)
 
-                percent_corrs = []
-                for port_number, roi in enumerate(self.ports):
-                    if roi is not None:
-                        scene_roi = scene[roi.top:roi.bottom, roi.left:roi.right]
-                        scene_roi = cv2.Canny(scene_roi, 50, 200)
+            percent_corrs = []
+            for port_number, roi in enumerate(self.ports):
+                if roi is not None:
+                    scene_roi = scene[roi.top:roi.bottom, roi.left:roi.right]
+                    scene_roi = cv2.Canny(scene_roi, 50, 200)
 
-                        corr_map = cv2.matchTemplate(
-                            scene_roi, scaled_percent, cv2.TM_CCOEFF_NORMED)
+                    corr_map = cv2.matchTemplate(
+                        scene_roi, scaled_percent, cv2.TM_CCOEFF_NORMED)
+                    _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
+                    percent_corrs.append(max_corr)
 
-                        _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
-
-                        percent_corrs.append(max_corr)
-
-                print(round(time) / 1000, percent_corrs)
-                corr_series.append((round(time) / 1000, max(percent_corrs)))
-                f.write("{0}\t{1}\n".format(round(time) / 1000, "\t".join(str(x)
-                                                                          for x in percent_corrs)))
+            corr_series.append((round(time) / 1000, max(percent_corrs)))
 
         def moving_average(series, n=5):
             return np.convolve(series, np.ones((n,)) / n, mode='valid')
 
         averages = moving_average([x[1] for x in corr_series],
                                   n=int(self.min_gap // self.polling_interval))
-        averages = zip([x[0] + self.min_gap // 2 for x in corr_series], averages)
+        averages = zip(
+            [x[0] + self.min_gap // 2 for x in corr_series], averages)
 
         kmeans = KMeans(n_clusters=4).fit(
             np.array([corr for time, corr in corr_series]).reshape(-1, 1))
@@ -137,11 +135,9 @@ class MatchParser:
         min_cluster_idx = centers.index(min(centers))
         points = zip([time for time, corr in corr_series], kmeans.labels_)
 
-        # threshold = sum(kmeans.cluster_centers_)[0] / 4
-        # logging.warn("Threshold is {:.4f}".format(threshold))
-
         # Throw out the lowest cluster
-        groups = [(k, list(v)) for k, v in groupby(points, lambda pt: pt[1] != min_cluster_idx)]
+        groups = [(k, list(v)) for k, v in groupby(
+            points, lambda pt: pt[1] != min_cluster_idx)]
         games = [[v[0][0], v[-1][0]] for k, v in groups if k]
 
         return games
@@ -213,22 +209,27 @@ def multiple_template_match(parser, feature, roi=None, max_clusters=None, N=50, 
         if roi is not None:
             scene = scene[roi.top:roi.bottom, roi.left:roi.right]
 
-        best_scale = find_best_scale(feature, scene, min_scale=min_scale, max_scale=max_scale)
+        best_scale = find_best_scale(
+            feature, scene, min_scale=min_scale, max_scale=max_scale)
         if best_scale:
             best_scale_log += [best_scale]
-            scaled_feature = cv2.resize(feature, (0, 0), fx=best_scale, fy=best_scale)
+            scaled_feature = cv2.resize(
+                feature, (0, 0), fx=best_scale, fy=best_scale)
 
             # Threshold for peaks.
-            # Explain what is going on here.
-            corr_map = cv2.matchTemplate(scene, scaled_feature, cv2.TM_CCOEFF_NORMED)
+            # TODO explain what is going on here.
+            corr_map = cv2.matchTemplate(
+                scene, scaled_feature, cv2.TM_CCOEFF_NORMED)
 
             _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
 
-            good_points = zip(*np.where(corr_map >= max_corr - parser.tolerance))
+            good_points = zip(
+                *np.where(corr_map >= max_corr - parser.tolerance))
 
             clusters = get_clusters(good_points)
 
-            these_peaks = [max(cluster, key=lambda pt: corr_map[pt]) for cluster in clusters]
+            these_peaks = [max(cluster, key=lambda pt: corr_map[pt])
+                           for cluster in clusters]
 
             if max_clusters:
                 peaks.extend(list(sorted(these_peaks, key=lambda pt: corr_map[
@@ -241,9 +242,11 @@ def multiple_template_match(parser, feature, roi=None, max_clusters=None, N=50, 
     feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
 
     if roi is not None:
-        feature_locations = [np.array((roi.top, roi.left)) + loc for loc in feature_locations]
+        feature_locations = [
+            np.array((roi.top, roi.left)) + loc for loc in feature_locations]
 
-    mean_best_scale = sum(best_scale_log) / len(best_scale_log) if best_scale_log else None
+    mean_best_scale = sum(best_scale_log) / \
+        len(best_scale_log) if best_scale_log else None
 
     return (mean_best_scale, feature_locations)
 
