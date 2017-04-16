@@ -43,7 +43,7 @@ class MatchParser:
     def __detect_geometry(self):
         percent = cv2.imread("assets/pct.png")
         scale, percent_locations = multiple_template_match(
-            self, percent, max_clusters=2)
+            self, percent, N=20, max_clusters=2)
 
         # Estimate bounding box from percent and clock locations
         height, width = [x * scale / 0.05835 for x in percent.shape[:2]]
@@ -71,15 +71,15 @@ class MatchParser:
         percent_locations = [
             self.geometry.affine_location(.87, .2 + .2381 * n) for n in range(4)]
 
-        percent_rois = [ROI((int(loc[0] - max_error * height),          int(loc[1] - max_error * width)),
-                            (int(loc[0] + (.06 + max_error) * height),  int(loc[1] + (.06 + max_error) * width))) for loc in percent_locations]
+        percent_rois = [ROI((int(loc[0] - max_error * height),         int(loc[1] - max_error * width)),
+                            (int(loc[0] + (.06 + max_error) * height), int(loc[1] + (.06 + max_error) * width))) for loc in percent_locations]
 
         ports = []
 
         percent = cv2.imread("assets/pct.png")
         for port_number, percent_roi in enumerate(percent_rois):
             scale, location = multiple_template_match(
-                self, percent, N=75, max_clusters=1, roi=percent_roi)
+                self, percent, max_clusters=1, N=10, roi=percent_roi)
             if scale:
                 location = location[0]
                 error = percent_locations[port_number] - location
@@ -201,7 +201,7 @@ def get_clusters(pts, max_distance=14):
     return clusters
 
 
-def multiple_template_match(parser, feature, roi=None, max_clusters=None, N=50, min_scale=0.5, max_scale=1.0):
+def multiple_template_match(parser, feature, roi=None, max_clusters=None, N=10, min_scale=0.5, max_scale=1.0):
     peaks = []
     best_scale_log = []
 
