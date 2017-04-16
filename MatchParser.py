@@ -79,7 +79,7 @@ class MatchParser:
         percent = cv2.imread("assets/pct.png")
         for port_number, percent_roi in enumerate(percent_rois):
             scale, location = multiple_template_match(
-                self, percent, max_clusters=1, roi=percent_roi)
+                self, percent, N=75, max_clusters=1, roi=percent_roi)
             if scale:
                 location = location[0]
                 error = percent_locations[port_number] - location
@@ -97,7 +97,7 @@ class MatchParser:
         percent = cv2.imread("assets/pct.png")
         corr_series = []
 
-        for (time, scene) in spaced_frames(self, interval=int(self.polling_interval * 30)):
+        for (time, scene) in spaced_frames(self, interval=self.polling_interval):
             cv2.imwrite("scene.png", scene)
             scene = cv2.imread("scene.png")
 
@@ -116,26 +116,25 @@ class MatchParser:
                     _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
                     percent_corrs.append(max_corr)
 
-            corr_series.append((round(time) / 1000, max(percent_corrs)))
+            point = [time, max(percent_corrs)]
+            corr_series.append(point)
+
+        corr_series = np.array(corr_series)
 
         def moving_average(series, n=5):
             return np.convolve(series, np.ones((n,)) / n, mode='valid')
 
-        averages = moving_average([x[1] for x in corr_series],
-                                  n=int(self.min_gap // self.polling_interval))
-        averages = zip(
-            [x[0] + self.min_gap // 2 for x in corr_series], averages)
+        averages = moving_average(corr_series[:, 1], n=int(
+            self.min_gap // self.polling_interval))
+        kmeans = KMeans(n_clusters=3).fit(averages.reshape(-1, 1))
 
-        kmeans = KMeans(n_clusters=4).fit(
-            np.array([corr for time, corr in corr_series]).reshape(-1, 1))
-
-        centers = kmeans.cluster_centers_.tolist()
-        min_cluster_idx = centers.index(min(centers))
-        points = zip([time for time, corr in corr_series], kmeans.labels_)
+        centers = kmeans.cluster_centers_
+        points = zip([time + (self.min_gap / 2)
+                      for time, corr in corr_series], kmeans.labels_)
 
         # Throw out the lowest cluster
-        groups = [(k, list(v)) for k, v in groupby(
-            points, lambda pt: pt[1] != min_cluster_idx)]
+        groups = [(k, list(v))
+                  for k, v in groupby(points, lambda pt: centers[pt[1]] > max(min(centers), .2))]
         games = [[v[0][0], v[-1][0]] for k, v in groups if k]
 
         return games
@@ -162,24 +161,30 @@ def find_best_scale(feature, scene, min_scale=0.5, max_scale=1.0, scale_delta=0.
         return None
 
 
-def spaced_frames(parser, interval=None, num_frames=None, fuzz=4):
-    if (interval is None and num_frames is None) or None not in (interval, num_frames):
-        raise ValueError('exactly one of (interval, num_frames) must be set')
+def spaced_frames(parser, start=None, end=None, interval=None, num_samples=None, fuzz=4):
+    if (interval is None and num_samples is None) or None not in (interval, num_samples):
+        raise ValueError('exactly one of (interval, num_samples) must be set')
 
     vc = cv2.VideoCapture(parser.stream)
-    total_frames = int(vc.get(7))
+    video_length = vc.get(7) / vc.get(5)
+    if not start or start < 0:
+        start = 0
+    if not end or end > video_length:
+        end = video_length
 
-    if not interval:
-        interval = total_frames // num_frames
+    total_time = end - start
 
-    for frame_pos in range(0, total_frames, interval):
-        frame_pos += randint(-1 * fuzz, fuzz)
-        frame_pos = min([max([0, frame_pos]), total_frames])
-        vc.set(1, frame_pos)
+    if not num_samples:
+        num_samples = total_time // interval
+
+    for time in np.linspace(start, end, num=num_samples):
+        time += randint(-1 * fuzz, fuzz) / vc.get(5)
+        time = min([max([0, time]), total_time])
+        vc.set(0, int(time * 1000))
         success, frame = vc.read()
 
         if success:
-            yield (vc.get(0), cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+            yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
     return
 
 
@@ -200,10 +205,10 @@ def multiple_template_match(parser, feature, roi=None, max_clusters=None, N=50, 
     peaks = []
     best_scale_log = []
 
-    for (n, scene) in spaced_frames(parser, num_frames=N):
+    for (n, scene) in spaced_frames(parser, num_samples=N):
         cv2.imwrite("scene.png", scene)
-
         scene = cv2.imread("scene.png")
+
         if roi is not None:
             scene = scene[roi.top:roi.bottom, roi.left:roi.right]
 
