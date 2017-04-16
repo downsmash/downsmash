@@ -13,7 +13,11 @@ def __main__():
     #    data = json.load(f)
     stream = args.file
 
-    MatchParser(stream).parse()
+    match = MatchParser(stream)
+    match.parse()
+
+    for chunk in match.chunks:
+        print(chunk)
 
 
 if __name__ == "__main__":
