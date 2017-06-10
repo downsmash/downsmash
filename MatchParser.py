@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
-import cv2
 import numpy as np
+import cv2
 from itertools import groupby
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 from random import randint
+from pandas import rolling_median
 import logging
 
 logging.basicConfig(format="%(message)s")
@@ -37,13 +38,18 @@ class MatchParser:
 
     def parse(self):
         self.geometry = self.__detect_geometry()
+        print(self.geometry)
         self.ports = self.__detect_ports()
+        print(self.ports)
         self.chunks = self.__detect_match_chunks()
+        print(self.chunks)
 
     def __detect_geometry(self):
         percent = cv2.imread("assets/pct.png")
         scale, percent_locations = multiple_template_match(
             self, percent, N=20, max_clusters=2)
+
+        print(percent_locations)
 
         # Estimate bounding box from percent and clock locations
         height, width = [x * scale / 0.05835 for x in percent.shape[:2]]
@@ -54,6 +60,7 @@ class MatchParser:
             feature = cv2.imread("assets/{0}_time.png".format(digit))
             scale, feature_locations = multiple_template_match(
                 self, feature, N=10, min_scale=0.8)
+            print(digit, feature_locations)
 
             clock_digit_locations.extend(feature_locations)
 
@@ -85,8 +92,9 @@ class MatchParser:
                 error = percent_locations[port_number] - location
                 logging.warn("Detected port {0} at location {1} (absolute error {2[0]}px, {2[1]}px)".format(
                     port_number + 1, location, error))
-                port_roi = ROI(self.geometry.affine_location(.748 - max_error, .0363 + .24 * port_number - max_error) - error,
-                               self.geometry.affine_location(.928 + max_error, .2196 + .24 * port_number + max_error) - error)
+                vmin, vmax = np.vectorize(min), np.vectorize(max)
+                port_roi = ROI(vmax(self.geometry.affine_location(0, 0), self.geometry.affine_location(.748 - max_error, .0363 + .24 * port_number - max_error) - error),
+                               vmin(self.geometry.affine_location(1, 1), self.geometry.affine_location(.928 + max_error, .2196 + .24 * port_number + max_error) - error))
                 ports.append(port_roi)
             else:
                 ports.append(None)
@@ -124,9 +132,8 @@ class MatchParser:
         def moving_average(series, n=5):
             return np.convolve(series, np.ones((n,)) / n, mode='valid')
 
-        averages = moving_average(corr_series[:, 1], n=int(
-            self.min_gap // self.polling_interval))
-        kmeans = KMeans(n_clusters=3).fit(averages.reshape(-1, 1))
+        medians = rolling_median(corr_series[:, 1], self.min_gap // self.polling_interval, center=True)[2:-2]
+        clusters = DBSCAN(eps=0.05, min_samples=10).fit(medians.reshape(-1, 1))
 
         centers = kmeans.cluster_centers_
         points = zip([time + (self.min_gap / 2)
