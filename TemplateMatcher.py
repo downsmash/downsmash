@@ -11,13 +11,15 @@ class TemplateMatcher:
     def __init__(self, scales=np.arange(0.5, 1.0, 0.03),
                  max_clusters=None, max_distance=14,
                  min_corr=0.8,
-                 thresh_min=50, thresh_max=200):
+                 thresh_min=50, thresh_max=200,
+                 tolerance=0.05):
         self.scales = scales
         self.max_clusters = max_clusters
         self.max_distance = max_distance
         self.min_corr = min_corr
         self.thresh_min = thresh_min
         self.thresh_max = thresh_max
+        self.tolerance = tolerance
 
     def match(self, feature, scene, roi=None, scale=None, debug=False):
         if roi is not None:
@@ -85,38 +87,3 @@ class TemplateMatcher:
             return best_scale
         else:
             return None
-
-    def locate(self, feature, roi=None, max_clusters=None, N=10, debug=False):
-        peaks = []
-        best_scale_log = []
-
-        for (n, scene) in self.sample_frames(num_samples=N):
-            cv2.imwrite("scene.png", scene)
-            scene = cv2.imread("scene.png")
-
-            scale, these_peaks = self.match(feature, scene,
-                                            roi=roi, debug=debug)
-            # if debug: logging.warn("{0} {1}".format(scale, these_peaks))
-
-            if scale:
-                best_scale_log += [scale]
-
-                these_peaks = sorted(these_peaks, key=lambda pt: pt[1])
-                these_peaks = [loc for loc, corr in these_peaks]
-
-                peaks.extend(these_peaks[:max_clusters])
-
-        feature_locations = [np.array(max(set(cluster), key=cluster.count))
-                             for cluster in self.get_clusters(peaks)]
-        feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
-
-        if roi is not None:
-            feature_locations = [np.array((roi.top, roi.left)) + loc
-                                 for loc in feature_locations]
-
-        if best_scale_log:
-            mean_best_scale = sum(best_scale_log) / len(best_scale_log)
-        else:
-            mean_best_scale = None
-
-        return (mean_best_scale, feature_locations)
