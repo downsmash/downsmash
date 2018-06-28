@@ -1,5 +1,5 @@
 import argparse
-from StreamParser import MeleeVODParser
+from MeleeVODParser import MeleeVODParser
 
 
 def __main__():
