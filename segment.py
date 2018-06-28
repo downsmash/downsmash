@@ -1,13 +1,10 @@
 import argparse
-from MatchParser import MatchParser
 from StreamParser import MeleeVODParser
 
 
 def __main__():
     parser = argparse.ArgumentParser(description='')
-    # parser.add_argument("input", help="the JSON file (filename/players)", type=str)
     parser.add_argument("file", help="stream", type=str)
-    parser.add_argument("-n", "--new", action='store_true')
 
     args = parser.parse_args()
 
@@ -15,10 +12,7 @@ def __main__():
     #    data = json.load(f)
     stream = args.file
 
-    if args.new:
-        match = MeleeVODParser(stream)
-    else:
-        match = MatchParser(stream)
+    match = MeleeVODParser(stream)
     match.parse()
 
     def timeify(n):
