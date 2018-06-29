@@ -50,6 +50,8 @@ class StreamParser:
             feature_locations = [np.array((roi.top, roi.left)) + loc
                                  for loc in feature_locations]
 
+        # feature_locations = feature_locations[:tm.max_clusters]
+
         if best_scale_log:
             mean_best_scale = sum(best_scale_log) / len(best_scale_log)
         else:

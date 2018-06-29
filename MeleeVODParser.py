@@ -33,6 +33,15 @@ class MeleeVODParser(StreamParser):
         percent = cv2.imread("assets/pct.png")
         tm = TemplateMatcher(max_clusters=2)
         scale, percent_locations = self.locate(percent, tm=tm, N=30)
+
+        print(percent_locations)
+
+        percent_locations = sorted(percent_locations, key=lambda l: l[0] // 5)
+        location_groups = groupby(percent_locations, lambda l: l[0] // 5)
+        location_groups = [(k, list(g)) for k, g in location_groups]
+        _, percent_locations = max(location_groups, key=lambda g: len(g[1]))
+        percent_locations = list(percent_locations)
+
         print(percent_locations)
 
         clock_digit_locations = []
@@ -126,23 +135,24 @@ class MeleeVODParser(StreamParser):
 
         corr_series = np.array(corr_series)
 
-        medians = pd.rolling_median(corr_series[:, 1], self.min_gap //
-                                    self.polling_interval, center=True)[2:-2]
+        window_size = self.min_gap // self.polling_interval
+        medians = pd.Series(corr_series[:, 1]).rolling(window_size).median()
+        medians = medians[window_size:]
 
-        clusters = DBSCAN(eps=0.03, min_samples=10).fit(medians.reshape(-1, 1))
+        medians = np.array(medians).reshape(-1, 1)
+        clusters = DBSCAN(eps=0.03, min_samples=10).fit(medians)
 
-        dataframe = zip(corr_series[:, 0][2:-2], medians, clusters.labels_)
-        dataframe = list(dataframe)
+        df = zip(corr_series[:, 0][window_size:], medians, clusters.labels_)
+        df = list(df)
 
-        labels = list(set(x[2] for x in dataframe))
+        labels = list(set(x[2] for x in df))
         cluster_means = [sum(cluster) / len(cluster) for cluster
-                         in [[x[1] for x in dataframe if x[2] == label]
+                         in [[x[1] for x in df if x[2] == label]
                          for label in labels]]
         cluster_means = list(zip(labels, cluster_means))
 
         game_label = max(cluster_means, key=lambda x: x[1])[0]
-        game_lists = [(k, list(v)) for k, v
-                      in groupby(dataframe, lambda pt: pt[2])]
+        game_lists = [(k, list(v)) for k, v in groupby(df, lambda pt: pt[2])]
         games = [[v[0][0], v[-1][0]] for k, v in game_lists if k == game_label]
 
         return games
