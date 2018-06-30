@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.cluster import DBSCAN
 from itertools import groupby
 
-from ROI import ROI
+from Rect import Rect
 from StreamParser import StreamParser
 from TemplateMatcher import TemplateMatcher
 
@@ -63,7 +63,7 @@ class MeleeVODParser(StreamParser):
 
         self.scale = (height / 411 * width / 548)**0.5
 
-        return ROI(top, left, height, width) & self.roi
+        return Rect(top, left, height, width) & self.roi
 
     def detect_ports(self, max_error=0.06):
         ports = []
@@ -74,8 +74,8 @@ class MeleeVODParser(StreamParser):
             pct_roi_left = pct_left - max_error * self.screen.width
             pct_roi_height = (.06 + 2 * max_error) * self.screen.height
             pct_roi_width = (.06 + 2 * max_error) * self.screen.width
-            pct_roi = ROI(pct_roi_top, pct_roi_left,
-                          pct_roi_height, pct_roi_width)
+            pct_roi = Rect(pct_roi_top, pct_roi_left,
+                           pct_roi_height, pct_roi_width)
 
             pct_roi &= self.screen
 
@@ -96,8 +96,8 @@ class MeleeVODParser(StreamParser):
             port_roi_left = port_left - max_error * self.screen.width
             port_roi_height = (.18 + 2 * max_error) * self.screen.height
             port_roi_width = (.1833 + 2 * max_error) * self.screen.width
-            port_roi = ROI(port_roi_top, port_roi_left,
-                           port_roi_height, port_roi_width)
+            port_roi = Rect(port_roi_top, port_roi_left,
+                            port_roi_height, port_roi_width)
 
             port_roi &= self.screen
             ports.append(port_roi)

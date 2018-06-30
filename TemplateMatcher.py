@@ -3,8 +3,6 @@
 import numpy as np
 import cv2
 
-# from ROI import ROI
-
 
 class TemplateMatcher:
 

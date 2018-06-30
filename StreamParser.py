@@ -6,7 +6,7 @@ from random import randint
 import logging
 import scipy.stats
 
-from ROI import ROI
+from Rect import Rect
 from TemplateMatcher import TemplateMatcher
 
 logging.basicConfig(format="%(message)s")
@@ -17,7 +17,7 @@ class StreamParser:
     def __init__(self, filename):
         self.filename = filename
         self.vc = cv2.VideoCapture(filename)
-        self.roi = ROI(0, 0, self.vc.get(4), self.vc.get(3))
+        self.shape = Rect(0, 0, self.vc.get(4), self.vc.get(3))
 
     def parse(self):
         raise NotImplementedError
@@ -50,8 +50,6 @@ class StreamParser:
         if roi is not None:
             feature_locations = [np.array((roi.top, roi.left)) + loc
                                  for loc in feature_locations]
-
-        # feature_locations = feature_locations[:tm.max_clusters]
 
         if best_scale_log:
             mean_best_scale = sum(best_scale_log) / len(best_scale_log)
