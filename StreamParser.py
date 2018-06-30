@@ -31,9 +31,14 @@ class StreamParser:
             cv2.imwrite("scene.png", scene)
             scene = cv2.imread("scene.png")
 
+            if roi:
+                mask = roi.mask(self.shape.height, self.shape.width)
+            else:
+                mask = None
+
             scale, these_peaks = tm.match(feature, scene,
-                                          roi=roi, debug=debug)
-            # if debug: logging.warn("{0} {1}".format(scale, these_peaks))
+                                          mask=mask,
+                                          debug=debug)
 
             if scale:
                 best_scale_log += [scale]
@@ -91,7 +96,13 @@ class StreamParser:
                 yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
         return
 
-    def overlay_map(self, num_samples=10, begin=None, end=None):
+    def overlay_map(self, num_samples=50, begin=None, end=None):
+        """Run a skewness-kurtosis filter on a sample of frames and
+        edge-detect.
+
+        The areas of the video containing game feed should come back black.
+        Areas containing overlay or letterboxes will be visibly white.
+        """
         data = None
         for time, frame in self.sample_frames(num_samples=num_samples,
                                               start=begin, end=end):
@@ -100,6 +111,7 @@ class StreamParser:
             else:
                 data += [frame]
 
+        sd_map = np.sqrt(np.var(data, axis=0))
         skew_map = scipy.stats.skew(data, axis=0)
         kurt_map = scipy.stats.kurtosis(data, axis=0)
         min_map = np.minimum(skew_map, kurt_map)
@@ -108,8 +120,16 @@ class StreamParser:
         map_max = max(min_map.flatten())
 
         # Clip to [0, 255], with 0=min and 255=max
-        fp = ((min_map - map_min)/(map_max - map_min) * 255).astype(np.uint8)
+        clipped = ((min_map - map_min)/(map_max - map_min) * 255)
+        clipped = clipped.astype(np.uint8)
 
         # Blur and edge detect.
-        fp = cv2.blur(fp, (5, 5))
-        fp = cv2.Canny(fp, 50, 150)
+        blurred = cv2.blur(clipped, (5, 5))
+        edges = cv2.Canny(blurred, 50, 150)
+
+        # Areas that are constant throughout the video (letterboxes) will
+        # have 0 skew, 0 kurt, and 0 variance, so the skew-kurt filter
+        # will miss them
+        edges[np.where(sd_map < 0.01)] = 255
+
+        return edges

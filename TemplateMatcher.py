@@ -2,54 +2,62 @@
 
 import numpy as np
 import cv2
+import logging
 
 
 class TemplateMatcher:
 
     def __init__(self, scales=np.arange(0.5, 1.0, 0.03),
                  max_clusters=None, max_distance=14,
-                 min_corr=0.8,
                  thresh_min=50, thresh_max=200,
-                 tolerance=0.05):
+                 criterion=cv2.TM_CCOEFF_NORMED,
+                 worst_match=0.8):
         self.scales = scales
         self.max_clusters = max_clusters
         self.max_distance = max_distance
-        self.min_corr = min_corr
         self.thresh_min = thresh_min
         self.thresh_max = thresh_max
-        self.tolerance = tolerance
 
-    def match(self, feature, scene, roi=None, scale=None, debug=False):
-        if roi is not None:
-            scene = scene[roi.top:(roi.top + roi.height),
-                          roi.left:(roi.left + roi.width)]
+        self.criterion = criterion
+        self.worst_match = worst_match
 
-        if not scale:
+    def match(self, feature, scene, mask=None, scale=None, debug=False):
+        if mask is not None:
+            scene *= mask
+
+        if scale is None:
             scale = self.find_best_scale(feature, scene)
         peaks = []
 
         if scale:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
-            canny_scene = cv2.Canny(scene, self.thresh_min, self.thresh_max)
-            canny_feature = cv2.Canny(scaled_feature, self.thresh_min,
+            scene_edges = cv2.Canny(scene, self.thresh_min, self.thresh_max)
+            feature_edges = cv2.Canny(scaled_feature, self.thresh_min,
                                       self.thresh_max)
 
             # Threshold for peaks.
-            corr_map = cv2.matchTemplate(canny_scene, canny_feature,
-                                         cv2.TM_CCOEFF_NORMED)
-            _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
+            peak_map = cv2.matchTemplate(scene_edges, feature_edges,
+                                         self.criterion)
 
-            good_points = np.where(corr_map >= max_corr - self.tolerance)
+            if self.criterion in (cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED):
+                best_val, _, best_loc, _ = cv2.minMaxLoc(peak_map)
+                good_points = np.where(peak_map <= self.worst_match)
+            else:
+                _, best_val, _, best_loc = cv2.minMaxLoc(peak_map)
+                good_points = np.where(peak_map >= self.worst_match)
+
             good_points = list(zip(*good_points))
 
             if debug:
-                print(max_corr, good_points)
+                logging.warn("{0}\t{1}".format(self.worst_match, good_points))
 
             clusters = self.get_clusters(good_points,
                                          max_distance=self.max_distance)
-            peaks = [max([(pt, corr_map[pt]) for pt in cluster],
-                         key=lambda pt: pt[1]) for cluster in clusters]
+
+            peaks = [max(clust, key=lambda pt: peak_map[pt])
+                     for clust in clusters]
+            peaks = [(peak, peak_map[peak]) for peak in peaks]
 
         return (scale, peaks)
 
@@ -73,8 +81,7 @@ class TemplateMatcher:
         for scale in self.scales:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
-            result = cv2.matchTemplate(scene, scaled_feature,
-                                       cv2.TM_CCOEFF_NORMED)
+            result = cv2.matchTemplate(scene, scaled_feature, self.criterion)
             _, max_val, _, _ = cv2.minMaxLoc(result)
 
             if max_val > best_corr:

@@ -52,3 +52,11 @@ class Rect:
             y, x = given
             return np.array((int(self.top + y * self.height),
                              int(self.left + x * self.width)))
+
+    def to_mask(self, height, width):
+        mask = np.zeros((height, width))
+
+        mask[self.top:(self.top + self.height + 1),
+             self.left:(self.left + self.width + 1)] = 1
+
+        return mask
