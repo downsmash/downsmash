@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from random import randint
 import logging
+import scipy.stats
 
 from ROI import ROI
 from TemplateMatcher import TemplateMatcher
@@ -91,3 +92,26 @@ class StreamParser:
             if success:
                 yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
         return
+
+    def overlay_map(self, num_samples=10, begin=None, end=None):
+        data = None
+        for time, frame in self.sample_frames(num_samples=num_samples,
+                                              start=begin, end=end):
+            if not data:
+                data = [frame]
+            else:
+                data += [frame]
+
+        skew_map = scipy.stats.skew(data, axis=0)
+        kurt_map = scipy.stats.kurtosis(data, axis=0)
+        min_map = np.minimum(skew_map, kurt_map)
+
+        map_min = min(min_map.flatten())
+        map_max = max(min_map.flatten())
+
+        # Clip to [0, 255], with 0=min and 255=max
+        fp = ((min_map - map_min)/(map_max - map_min) * 255).astype(np.uint8)
+
+        # Blur and edge detect.
+        fp = cv2.blur(fp, (5, 5))
+        fp = cv2.Canny(fp, 50, 150)
