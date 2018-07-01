@@ -32,7 +32,7 @@ class StreamParser:
             scene = cv2.imread("scene.png")
 
             if roi:
-                mask = roi.mask(self.shape.height, self.shape.width)
+                mask = roi.to_mask(self.shape.height, self.shape.width)
             else:
                 mask = None
 
@@ -51,10 +51,6 @@ class StreamParser:
         feature_locations = [np.array(max(set(cluster), key=cluster.count))
                              for cluster in tm.get_clusters(peaks)]
         feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
-
-        if roi is not None:
-            feature_locations = [np.array((roi.top, roi.left)) + loc
-                                 for loc in feature_locations]
 
         if best_scale_log:
             mean_best_scale = sum(best_scale_log) / len(best_scale_log)

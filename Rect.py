@@ -54,9 +54,9 @@ class Rect:
                              int(self.left + x * self.width)))
 
     def to_mask(self, height, width):
-        mask = np.zeros((height, width))
+        mask = np.zeros((height, width, 3))
 
         mask[self.top:(self.top + self.height + 1),
-             self.left:(self.left + self.width + 1)] = 1
+             self.left:(self.left + self.width + 1)] = (1, 1, 1)
 
-        return mask
+        return mask.astype(np.uint8)

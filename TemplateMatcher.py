@@ -11,7 +11,7 @@ class TemplateMatcher:
                  max_clusters=None, max_distance=14,
                  thresh_min=50, thresh_max=200,
                  criterion=cv2.TM_CCOEFF_NORMED,
-                 worst_match=0.8):
+                 worst_match=0.75):
         self.scales = scales
         self.max_clusters = max_clusters
         self.max_distance = max_distance
@@ -50,7 +50,11 @@ class TemplateMatcher:
             good_points = list(zip(*good_points))
 
             if debug:
-                logging.warn("{0}\t{1}".format(self.worst_match, good_points))
+                cv2.imshow('edges', scene_edges)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+
+                logging.warn("{0}\t{1}\t{2}".format(self.worst_match, best_val, good_points))
 
             clusters = self.get_clusters(good_points,
                                          max_distance=self.max_distance)
@@ -88,7 +92,7 @@ class TemplateMatcher:
                 best_corr = max_val
                 best_scale = scale
 
-        if best_corr > self.min_corr:
+        if best_corr > self.worst_match:
             return best_scale
         else:
             return None

@@ -1,4 +1,6 @@
 import argparse
+import logging
+
 from MeleeVODParser import MeleeVODParser
 
 
@@ -21,8 +23,7 @@ def __main__():
 
     for chunk in match.chunks:
         start, end = chunk
-        # print("{0} - {1}".format(timeify(start), timeify(end)))
-        match.get_percents(chunk)
+        logging.warn("{0} - {1}".format(timeify(start), timeify(end)))
 
 
 if __name__ == "__main__":

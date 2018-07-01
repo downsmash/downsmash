@@ -26,44 +26,49 @@ class MeleeVODParser(StreamParser):
         self.ports = self.detect_ports()
         logging.warn("Ports are at {0} {1} {2} {3}".format(*self.ports))
         self.chunks = self.detect_match_chunks()
-        for chunk in self.chunks:
-            logging.warn(chunk)
 
     def detect_screen(self):
+        tm = TemplateMatcher(max_clusters=2, scales=np.arange(0.6, 1.0, 0.03))
         percent = cv2.imread("assets/pct.png")
-        tm = TemplateMatcher(max_clusters=2)
         scale, percent_locations = self.locate(percent, tm=tm, N=30)
 
-        print(percent_locations)
-
+        # Group the returned locations to within 5 px tolerance on y-axis.
         percent_locations = sorted(percent_locations, key=lambda l: l[0] // 5)
         location_groups = groupby(percent_locations, lambda l: l[0] // 5)
         location_groups = [(k, list(g)) for k, g in location_groups]
+
+        # Choose the biggest group.
+        # TODO: Make locate() statistical.
         _, percent_locations = max(location_groups, key=lambda g: len(g[1]))
         percent_locations = list(percent_locations)
 
         print(percent_locations)
 
-        clock_digit_locations = []
-        for digit in [2, 3, 4, 5, 6, 8]:
-            feature = cv2.imread("assets/{0}_time.png".format(digit))
-            tm = TemplateMatcher(scales=np.arange(0.8, 1.0, 0.03))
-            _, digit_locations = self.locate(feature, tm=tm, N=20)
-
-            clock_digit_locations.extend(digit_locations)
-
-        print(clock_digit_locations)
-
-        # Estimate bounding box from percent and clock locations
+        # Approximate screen Y-pos from percents.
         height, width = [x * scale / 0.05835 for x in percent.shape[:2]]
         top = np.mean(percent_locations, axis=0)[0] - .871 * height
 
-        clock_center = np.mean(clock_digit_locations, axis=0)[1]
-        left = clock_center - .475 * width
+        logging.warn("Generating skew-kurtosis map...")
+        overlay = self.overlay_map()
+        leftmost_pct = min(percent_locations, key=lambda pos: pos[1])[1]
 
+        leftmost_port = None
+        best_goods = 0
+        # The leftmost percent sign can be one of four ports.
+        for port_no in range(4):
+            left = leftmost_pct - (.2 + .2381 * port_no) * width
+            screen = Rect(top, left, height, width) & self.shape
+            pixels = overlay[screen.top:(screen.top + screen.height),
+                             screen.left:(screen.left + screen.width)]
+            goods = np.count_nonzero(pixels == 0)
+            if goods > best_goods:
+                best_goods = goods
+                leftmost_port = port_no
+
+        left = leftmost_pct - (.2 + .2381 * leftmost_port) * width
         self.scale = (height / 411 * width / 548)**0.5
 
-        return Rect(top, left, height, width) & self.roi
+        return Rect(top, left, height, width) & self.shape
 
     def detect_ports(self, max_error=0.06):
         ports = []
@@ -79,7 +84,8 @@ class MeleeVODParser(StreamParser):
 
             pct_roi &= self.screen
 
-            tm = TemplateMatcher(max_clusters=1)
+            tm = TemplateMatcher(max_clusters=1, scales=[self.scale],
+                                 worst_match=0.6)
             scale, location = self.locate(percent, N=10, tm=tm,
                                           roi=pct_roi, debug=True)
             if scale is None:
