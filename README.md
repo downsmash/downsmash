@@ -5,7 +5,7 @@ statistical whatsits to determine when Melee happens.
 
 The methodology used is fairly brittle and may not generalize to other games.
 
-Requires OpenCV, Numpy, and scikit-learn.
+Depends on OpenCV, Pandas, and scikit-learn.
 
 ## Synopsis
 ```
