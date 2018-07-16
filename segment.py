@@ -1,5 +1,6 @@
 import argparse
 import logging
+import pandas as pd
 
 from MeleeVODParser import MeleeVODParser
 
@@ -21,9 +22,19 @@ def __main__():
         mins, secs = int(n // 60), n % 60
         return "{:d}:{:05.2f}".format(mins, secs)
 
-    for chunk in match.chunks:
-        start, end = chunk
-        logging.warn("{0} - {1}".format(timeify(start), timeify(end)))
+    corr_series = match.detect_match_chunks()
+
+    df = pd.DataFrame(corr_series, columns=('time', 'corr'))
+
+    medians = df['corr'].rolling(5, center=True).median()
+    medians = medians.fillna(method='bfill').fillna(method='ffill')
+    df['median'] = medians
+
+    plot = df.plot(x='time')
+    fig = plot.get_figure()
+
+    fig.savefig('ts.png')
+    df.to_csv('ts.csv')
 
 
 if __name__ == "__main__":

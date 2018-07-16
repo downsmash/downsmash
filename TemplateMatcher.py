@@ -21,23 +21,25 @@ class TemplateMatcher:
         self.criterion = criterion
         self.worst_match = worst_match
 
-    def match(self, feature, scene, mask=None, scale=None, debug=False):
+    def match(self, feature, scene, mask=None, scale=None, edge=False,
+              debug=False):
         if mask is not None:
             scene *= mask
 
         if scale is None:
-            scale = self.find_best_scale(feature, scene)
+            scale = self.find_best_scale(feature, scene, debug=debug)
         peaks = []
 
         if scale:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
-            scene_edges = cv2.Canny(scene, self.thresh_min, self.thresh_max)
-            feature_edges = cv2.Canny(scaled_feature, self.thresh_min,
-                                      self.thresh_max)
+            if edge:
+                scene = cv2.Canny(scene, self.thresh_min, self.thresh_max)
+                scaled_feature = cv2.Canny(scaled_feature, self.thresh_min,
+                                           self.thresh_max)
 
             # Threshold for peaks.
-            peak_map = cv2.matchTemplate(scene_edges, feature_edges,
+            peak_map = cv2.matchTemplate(scene, scaled_feature,
                                          self.criterion)
 
             if self.criterion in (cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED):
@@ -50,11 +52,12 @@ class TemplateMatcher:
             good_points = list(zip(*good_points))
 
             if debug:
-                cv2.imshow('edges', scene_edges)
+                logging.warn("%f %f %f %s %s", scale, self.worst_match,
+                             best_val, best_loc, good_points)
+
+                cv2.imshow('edges', scene)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
-
-                logging.warn("{0}\t{1}\t{2}".format(self.worst_match, best_val, good_points))
 
             clusters = self.get_clusters(good_points,
                                          max_distance=self.max_distance)
@@ -78,7 +81,7 @@ class TemplateMatcher:
 
         return clusters
 
-    def find_best_scale(self, feature, scene):
+    def find_best_scale(self, feature, scene, debug=False):
         best_corr = 0
         best_scale = 0
 
@@ -86,11 +89,14 @@ class TemplateMatcher:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
             result = cv2.matchTemplate(scene, scaled_feature, self.criterion)
-            _, max_val, _, _ = cv2.minMaxLoc(result)
+            _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
             if max_val > best_corr:
                 best_corr = max_val
                 best_scale = scale
+
+        if debug:
+            logging.warn("%f %f", best_scale, best_corr)
 
         if best_corr > self.worst_match:
             return best_scale

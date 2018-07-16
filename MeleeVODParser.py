@@ -3,8 +3,8 @@
 import numpy as np
 import cv2
 import logging
-import pandas as pd
-from sklearn.cluster import DBSCAN
+# import pandas as pd
+# from sklearn.cluster import DBSCAN
 from itertools import groupby
 
 from Rect import Rect
@@ -25,32 +25,32 @@ class MeleeVODParser(StreamParser):
         logging.warn("Estimated scale is {scale}".format(**self.__dict__))
         self.ports = self.detect_ports()
         logging.warn("Ports are at {0} {1} {2} {3}".format(*self.ports))
-        self.chunks = self.detect_match_chunks()
+        # self.chunks = self.detect_match_chunks()
 
     def detect_screen(self):
-        tm = TemplateMatcher(max_clusters=2, scales=np.arange(0.6, 1.0, 0.03))
+        tm = TemplateMatcher(max_clusters=2, scales=np.arange(0.6, 1.1, 0.03))
         percent = cv2.imread("assets/pct.png")
-        scale, percent_locations = self.locate(percent, tm=tm, N=30)
+        scale, pct_locations = self.locate(percent, tm=tm, N=30)
 
         # Group the returned locations to within 5 px tolerance on y-axis.
-        percent_locations = sorted(percent_locations, key=lambda l: l[0] // 5)
-        location_groups = groupby(percent_locations, lambda l: l[0] // 5)
+        pct_locations = sorted(pct_locations, key=lambda l: l[0] // 5)
+        location_groups = groupby(pct_locations, lambda l: l[0] // 5)
         location_groups = [(k, list(g)) for k, g in location_groups]
 
         # Choose the biggest group.
         # TODO: Make locate() statistical.
-        _, percent_locations = max(location_groups, key=lambda g: len(g[1]))
-        percent_locations = list(percent_locations)
+        _, pct_locations = max(location_groups, key=lambda g: len(g[1]))
+        pct_locations = list(pct_locations)
 
-        print(percent_locations)
+        print(pct_locations)
 
         # Approximate screen Y-pos from percents.
         height, width = [x * scale / 0.05835 for x in percent.shape[:2]]
-        top = np.mean(percent_locations, axis=0)[0] - .871 * height
+        top = np.mean(pct_locations, axis=0)[0] - .871 * height
 
         logging.warn("Generating skew-kurtosis map...")
         overlay = self.overlay_map()
-        leftmost_pct = min(percent_locations, key=lambda pos: pos[1])[1]
+        leftmost_pct = min(pct_locations, key=lambda pos: pos[1])[1]
 
         leftmost_port = None
         best_goods = 0
@@ -86,8 +86,7 @@ class MeleeVODParser(StreamParser):
 
             tm = TemplateMatcher(max_clusters=1, scales=[self.scale],
                                  worst_match=0.6)
-            scale, location = self.locate(percent, N=10, tm=tm,
-                                          roi=pct_roi, debug=True)
+            scale, location = self.locate(percent, N=10, tm=tm, roi=pct_roi)
             if scale is None:
                 ports.append(None)
                 continue
@@ -137,28 +136,9 @@ class MeleeVODParser(StreamParser):
                     percent_corrs.append(max_corr)
 
             point = [t, max(percent_corrs)]
+            print(*point, sep="\t", flush=True)
             corr_series.append(point)
 
         corr_series = np.array(corr_series)
 
-        window_size = self.min_gap // self.polling_interval
-        medians = pd.Series(corr_series[:, 1]).rolling(window_size).median()
-        medians = medians[window_size:]
-
-        medians = np.array(medians).reshape(-1, 1)
-        clusters = DBSCAN(eps=0.03, min_samples=10).fit(medians)
-
-        df = zip(corr_series[:, 0][window_size:], medians, clusters.labels_)
-        df = list(df)
-
-        labels = list(set(x[2] for x in df))
-        cluster_means = [sum(cluster) / len(cluster) for cluster
-                         in [[x[1] for x in df if x[2] == label]
-                         for label in labels]]
-        cluster_means = list(zip(labels, cluster_means))
-
-        game_label = max(cluster_means, key=lambda x: x[1])[0]
-        game_lists = [(k, list(v)) for k, v in groupby(df, lambda pt: pt[2])]
-        games = [[v[0][0], v[-1][0]] for k, v in game_lists if k == game_label]
-
-        return games
+        return corr_series
