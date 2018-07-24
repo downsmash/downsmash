@@ -3,9 +3,11 @@
 import numpy as np
 import cv2
 import logging
-# import pandas as pd
-# from sklearn.cluster import DBSCAN
+import pandas as pd
 from itertools import groupby
+
+from sklearn.neighbors.kde import KernelDensity
+from scipy.signal import argrelmin
 
 from Rect import Rect
 from StreamParser import StreamParser
@@ -48,7 +50,7 @@ class MeleeVODParser(StreamParser):
         height, width = [x * scale / 0.05835 for x in percent.shape[:2]]
         top = np.mean(pct_locations, axis=0)[0] - .871 * height
 
-        logging.warn("Generating skew-kurtosis map...")
+        logging.info("Generating skew-kurtosis map...")
         overlay = self.overlay_map()
         leftmost_pct = min(pct_locations, key=lambda pos: pos[1])[1]
 
@@ -139,6 +141,23 @@ class MeleeVODParser(StreamParser):
             print(*point, sep="\t", flush=True)
             corr_series.append(point)
 
-        corr_series = np.array(corr_series)
+        corr_series = pd.DataFrame(corr_series, columns=['time', 'corr'])
+        corr_series['median'] = corr_series['corr'].rolling(5).median()
+        corr_series['median'] = corr_series['median'].fillna(method='bfill')
+        corr_series['median'] = corr_series['median'].fillna(method='ffill')
 
-        return corr_series
+        kde = KernelDensity(kernel='gaussian', bandwidth=.005)
+        kde = kde.fit(np.array(corr_series['median']).reshape(-1, 1))
+        e = kde.score_samples(np.linspace(0, 1, num=100).reshape(-1, 1))
+
+        rel_mins = argrelmin(e)[0]
+        deepest_min = max(rel_mins, key=lambda idx: min(e[idx - 1] - e[idx],
+                                                        e[idx + 1] - e[idx]))
+
+        split_point = deepest_min / 100
+        groups = groupby(corr_series.iterrows(),
+                         lambda row: row[1]['median'] > split_point)
+        groups = [(k, list(g)) for k, g in groups]
+        matches = [(2 * g[0][0], 2 * g[-1][0]) for k, g in groups if k]
+
+        return matches

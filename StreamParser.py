@@ -89,6 +89,7 @@ class StreamParser:
             success, frame = self.vc.read()
 
             if success:
+                logging.info('%d\n', time)
                 yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
         return
 
