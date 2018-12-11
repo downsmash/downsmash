@@ -3,3 +3,4 @@ scene.png
 overlay.py
 vods/*
 __pycache__/*
+.ipynb_checkpoints/*
