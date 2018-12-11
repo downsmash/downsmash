@@ -2,3 +2,4 @@ __pycache__/*
 scene.png
 overlay.py
 vods/*
+__pycache__/*
