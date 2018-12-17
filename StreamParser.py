@@ -5,6 +5,8 @@ import numpy as np
 from random import randint
 import logging
 import scipy.stats
+from sklearn.neighbors import KernelDensity
+from scipy.signal import argrelmax
 
 from Rect import Rect
 from TemplateMatcher import TemplateMatcher
@@ -21,6 +23,33 @@ class StreamParser:
 
     def parse(self):
         raise NotImplementedError
+
+    def locate_kde(self, feature, roi=None, tm=TemplateMatcher(), N=10,
+                   debug=False):
+        scales = []
+        peaks = []
+        for (n, scene) in self.sample_frames(num_samples=N):
+            cv2.imwrite("scene.png", scene)
+            scene = cv2.imread("scene.png")
+
+            if roi:
+                mask = roi.to_mask(self.shape.height, self.shape.width)
+            else:
+                mask = None
+
+            scale, these_peaks = tm.match(feature, scene,
+                                          mask=mask,
+                                          debug=debug)
+
+            if scale:
+                scales.append(scale)
+                peaks.extend(these_peaks)
+
+            if peaks:
+                kde = KernelDensity(kernel='gaussian', bandwidth=0.5)
+                uniq_peaks = list(set(peaks))
+                densities = kde(uniq_peaks)
+                return
 
     def locate(self, feature, roi=None, tm=TemplateMatcher(), N=10,
                debug=False):
@@ -60,7 +89,7 @@ class StreamParser:
         return (mean_best_scale, feature_locations)
 
     def sample_frames(self, start=None, end=None, interval=None,
-                      num_samples=None, fuzz=0):
+                      num_samples=None, fuzz=0, color=False):
         if (interval is None and num_samples is None) or \
                 None not in (interval, num_samples):
             raise ValueError('exactly one of (interval, num_samples) '
@@ -89,8 +118,14 @@ class StreamParser:
             success, frame = self.vc.read()
 
             if success:
+                cv2.imwrite('scene.png', frame)
+                frame = cv2.imread('scene.png', cv2.IMREAD_COLOR)
+
                 logging.info('%d\n', time)
-                yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+                if color:
+                    yield (time, frame)
+                else:
+                    yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
         return
 
     def overlay_map(self, num_samples=50, begin=None, end=None):
@@ -117,7 +152,7 @@ class StreamParser:
         map_max = max(min_map.flatten())
 
         # Clip to [0, 255], with 0=min and 255=max
-        clipped = ((min_map - map_min)/(map_max - map_min) * 255)
+        clipped = ((min_map - map_min) / (map_max - map_min) * 255)
         clipped = clipped.astype(np.uint8)
 
         # Blur and edge detect.

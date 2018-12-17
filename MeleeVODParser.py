@@ -27,7 +27,8 @@ class MeleeVODParser(StreamParser):
         logging.warn("Estimated scale is {scale}".format(**self.__dict__))
         self.ports = self.detect_ports()
         logging.warn("Ports are at {0} {1} {2} {3}".format(*self.ports))
-        # self.chunks = self.detect_match_chunks()
+        self.chunks = self.detect_match_chunks()
+        self.parse_chunks()
 
     def detect_screen(self):
         tm = TemplateMatcher(max_clusters=2, scales=np.arange(0.6, 1.1, 0.03))
@@ -40,7 +41,7 @@ class MeleeVODParser(StreamParser):
         location_groups = [(k, list(g)) for k, g in location_groups]
 
         # Choose the biggest group.
-        # TODO: Make locate() statistical.
+        # TODO: Try to get locate() to use KDE.
         _, pct_locations = max(location_groups, key=lambda g: len(g[1]))
         pct_locations = list(pct_locations)
 
@@ -56,6 +57,7 @@ class MeleeVODParser(StreamParser):
 
         leftmost_port = None
         best_goods = 0
+
         # The leftmost percent sign can be one of four ports.
         for port_no in range(4):
             left = leftmost_pct - (.2 + .2381 * port_no) * width
@@ -161,3 +163,44 @@ class MeleeVODParser(StreamParser):
         matches = [(2 * g[0][0], 2 * g[-1][0]) for k, g in groups if k]
 
         return matches
+
+    def parse_chunks(self):
+        candidates = 5
+        for (start, end) in self.chunks:
+            for (t, scene) in self.sample_frames(interval=1.0,
+                                                 start=start, end=end, color=True):
+                pcts = []
+                for port_number, roi in enumerate(self.ports):
+                    if roi is None:
+                        continue
+                    scene_roi = scene[roi.top:(roi.top + roi.height),
+                                      roi.left:(roi.left + roi.width)]
+                    _, width, _ = scene_roi.shape
+
+                    best_pcts = []
+                    for n in range(150 + 1):
+                        pct = cv2.imread("assets/pct/crop{:03d}.png".format(n),
+                                         cv2.IMREAD_COLOR)
+
+                        mask = cv2.imread("assets/pct/mask{:03d}.png".format(n), cv2.IMREAD_COLOR)
+
+                        scaled_pct = cv2.resize(pct, (0, 0), fx=self.scale * 0.6, fy=self.scale * 0.6)
+                        try:
+                            tm = cv2.matchTemplate(scene_roi, scaled_pct, cv2.TM_CCORR_NORMED, mask=mask)
+                        except cv2.error:
+                            tm = cv2.matchTemplate(scene_roi, scaled_pct[:, -width:, :], cv2.TM_CCORR_NORMED, mask=mask[:, -width:, :])
+
+                        _, corr, _, loc = cv2.minMaxLoc(tm)
+                        best_pcts.append((n, corr))
+                    best_pcts = list(sorted(best_pcts, key=lambda k: k[1]))
+                    best_pcts = best_pcts[-candidates:][::-1]
+
+                    # cv2.imshow(str(maxPct), np.concatenate((scene_roi, scaled_pct[:, -width:, :]), axis=0))
+                    # cv2.waitKey(0)
+                    # cv2.destroyAllWindows()
+                    pcts.append(best_pcts)
+
+                for _pcts in zip(*pcts):
+                    print(t, "\t".join(str(a) for n in _pcts for a in n), flush=True)
+
+                print("", flush=True)
