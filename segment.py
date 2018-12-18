@@ -20,6 +20,8 @@ def __main__():
         mins, secs = int(n // 60), n % 60
         return "{:d}:{:05.2f}".format(mins, secs)
 
+    for start, end in match.chunks:
+        print(timeify(start), timeify(end))
 
 if __name__ == "__main__":
     __main__()
