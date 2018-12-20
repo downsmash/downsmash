@@ -1,6 +1,6 @@
 import argparse
 
-from MeleeVODParser import MeleeVODParser
+from Segmenter import Segmenter
 
 
 def __main__():
@@ -13,7 +13,7 @@ def __main__():
     #    data = json.load(f)
     stream = args.file
 
-    match = MeleeVODParser(stream)
+    match = Segmenter(stream)
     match.parse()
 
     def timeify(n):
