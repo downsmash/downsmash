@@ -1,7 +1,8 @@
 #!/usr/bin/python
-from MeleeVODParser import MeleeVODParser
+from Segmenter import Segmenter
 
 
-class Trainer(MeleeVODParser):
+class Trainer(Segmenter):
     def __init__(self, filename):
-        MeleeVODParser.__init__(self, filename)
+        Segmenter.__init__(self, filename)
+        
