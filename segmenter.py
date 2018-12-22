@@ -9,9 +9,9 @@ import itertools
 from sklearn.neighbors.kde import KernelDensity
 from scipy.signal import argrelmin
 
-from Rect import Rect
-from StreamParser import StreamParser
-from TemplateMatcher import TemplateMatcher
+from rect import Rect
+from streamParser import StreamParser
+from templateMatcher import TemplateMatcher
 
 
 class Segmenter(StreamParser):
@@ -51,7 +51,7 @@ class Segmenter(StreamParser):
         _, pct_locations = max(location_groups, key=lambda g: len(g[1]))
         pct_locations = list(pct_locations)
 
-        print(pct_locations)
+        # print(pct_locations)
 
         # Approximate screen Y-pos from percents.
         height, width = [x * scale / 0.05835 for x in percent.shape[:2]]

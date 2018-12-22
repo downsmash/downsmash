@@ -8,8 +8,8 @@ import scipy.stats
 from sklearn.neighbors import KernelDensity
 from scipy.signal import argrelmax
 
-from Rect import Rect
-from TemplateMatcher import TemplateMatcher
+from rect import Rect
+from templateMatcher import TemplateMatcher
 
 logging.basicConfig(format="%(message)s")
 

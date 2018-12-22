@@ -1,6 +1,6 @@
 import argparse
 
-from Segmenter import Segmenter
+from segmenter import Segmenter
 
 
 def __main__():
