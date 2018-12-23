@@ -16,7 +16,7 @@ class TrainerDialog(QMainWindow):
     def set_pctval(self, pctval):
         self.pctval = pctval
 
-    def __init__(self, img):
+    def __init__(self, img, last_state=None):
         super().__init__()
 
         self.setWindowTitle("Classify frame...")
@@ -42,9 +42,8 @@ class TrainerDialog(QMainWindow):
         layout.addWidget(self.pct)
 
         h, w, d = img.shape
-        # timg = np.transpose(img, (1, 0, 2)).copy()
         qimg = QImage(img.copy(), w, h, d * w, QImage.Format_RGB888)
-        qimg = qimg.rgbSwapped()
+        qimg = qimg.rgbSwapped()  # BGR2RGB
         self.imlabel = QLabel()
         pixmap = QPixmap.fromImage(qimg)
         self.imlabel.setPixmap(QPixmap(pixmap))
