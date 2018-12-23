@@ -1,8 +1,13 @@
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import *
 from sqlalchemy.orm import relationship
+import enum
+from glob import glob
 
 Base = declarative_base()
+
+# Characters = enum.Enum("Characters", glob("assets/icons/*.png"))
+Characters = glob("assets/icons/*.png")
 
 
 class Set(Base):
