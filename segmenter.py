@@ -20,17 +20,21 @@ class Segmenter(StreamParser):
         StreamParser.__init__(self, filename)
         self.polling_interval = polling_interval
         self.min_gap = min_gap
+        self.data = dict()
 
     def parse(self):
-        self.screen = self.detect_screen()
-        logging.warn("Screen is at {0}".format(self.screen))
+        self.data["screen"] = self.detect_screen()
+        logging.warn("Screen is at {0}".format(self.data["screen"]))
 
-        logging.warn("Estimated scale is {scale}".format(**self.__dict__))
+        logging.warn("Estimated scale is {scale}".format(**self.data))
 
-        self.ports = self.detect_ports()
-        logging.warn("Ports are at {0} {1} {2} {3}".format(*self.ports))
+        self.data["ports"] = self.detect_ports()
+        if not self.data["ports"]:
+            raise RuntimeError("No ports found!")
 
-        self.chunks = self.detect_match_chunks()
+        logging.warn("Ports are at {0} {1} {2} {3}".format(*self.data["ports"]))
+
+        self.data["chunks"] = self.detect_match_chunks()
 
     def detect_screen(self):
         """Attempt to detect the screen.
@@ -43,6 +47,9 @@ class Segmenter(StreamParser):
 
         # Group the returned locations to within 5 px tolerance on y-axis.
         pct_locations = sorted(pct_locations, key=lambda l: l[0] // 5)
+        if not pct_locations:
+            raise RuntimeError("No percent signs found!")
+
         location_groups = itertools.groupby(pct_locations, lambda l: l[0] // 5)
         location_groups = [(k, list(g)) for k, g in location_groups]
 
@@ -77,7 +84,7 @@ class Segmenter(StreamParser):
                 leftmost_port = port_no
 
         left = leftmost_pct - (.2 + .2381 * leftmost_port) * width
-        self.scale = (height / 411 * width / 548)**0.5
+        self.data["scale"] = (height / 411 * width / 548)**0.5
 
         return Rect(top, left, height, width) & self.shape
 
@@ -86,17 +93,17 @@ class Segmenter(StreamParser):
         percent = cv2.imread("assets/pct.png")
         # TODO DRY this out
         for port_number in range(4):
-            (pct_top, pct_left) = self.screen[.87, .2 + .2381 * port_number]
-            pct_roi_top = pct_top - max_error * self.screen.height
-            pct_roi_left = pct_left - max_error * self.screen.width
-            pct_roi_height = (.06 + 2 * max_error) * self.screen.height
-            pct_roi_width = (.06 + 2 * max_error) * self.screen.width
+            (pct_top, pct_left) = self.data["screen"][.87, .2 + .2381 * port_number]
+            pct_roi_top = pct_top - max_error * self.data["screen"].height
+            pct_roi_left = pct_left - max_error * self.data["screen"].width
+            pct_roi_height = (.06 + 2 * max_error) * self.data["screen"].height
+            pct_roi_width = (.06 + 2 * max_error) * self.data["screen"].width
             pct_roi = Rect(pct_roi_top, pct_roi_left,
                            pct_roi_height, pct_roi_width)
 
-            pct_roi &= self.screen
+            pct_roi &= self.data["screen"]
 
-            tm = TemplateMatcher(max_clusters=1, scales=[self.scale],
+            tm = TemplateMatcher(max_clusters=1, scales=[self.data["scale"]],
                                  worst_match=0.6)
             scale, location = self.locate(percent, N=10, tm=tm, roi=pct_roi)
             if scale is None:
@@ -108,15 +115,15 @@ class Segmenter(StreamParser):
                          "(error {2[0]}px, {2[1]}px)"
                          .format(port_number + 1, location[0], error))
 
-            (port_top, port_left) = self.screen[.75, .0363 + .24 * port_number]
-            port_roi_top = port_top - max_error * self.screen.height
-            port_roi_left = port_left - max_error * self.screen.width
-            port_roi_height = (.18 + 2 * max_error) * self.screen.height
-            port_roi_width = (.1833 + 2 * max_error) * self.screen.width
+            (port_top, port_left) = self.data["screen"][.75, .0363 + .24 * port_number]
+            port_roi_top = port_top - max_error * self.data["screen"].height
+            port_roi_left = port_left - max_error * self.data["screen"].width
+            port_roi_height = (.18 + 2 * max_error) * self.data["screen"].height
+            port_roi_width = (.1833 + 2 * max_error) * self.data["screen"].width
             port_roi = Rect(port_roi_top, port_roi_left,
                             port_roi_height, port_roi_width)
 
-            port_roi &= self.screen
+            port_roi &= self.data["screen"]
             ports.append(port_roi)
         else:
             ports.append(None)
@@ -129,11 +136,11 @@ class Segmenter(StreamParser):
         scene = cv2.imread("scene.png")
 
         scaled_percent = cv2.resize(
-            percent, (0, 0), fx=self.scale, fy=self.scale)
+            percent, (0, 0), fx=self.data["scale"], fy=self.data["scale"])
         scaled_percent = cv2.Canny(scaled_percent, 50, 200)
 
         percent_corrs = []
-        for port_number, roi in enumerate(self.ports):
+        for port_number, roi in enumerate(self.data["ports"]):
             if roi is not None:
                 scene_roi = scene[roi.top:(roi.top + roi.height),
                                   roi.left:(roi.left + roi.width)]

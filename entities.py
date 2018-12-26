@@ -6,8 +6,11 @@ from glob import glob
 
 Base = declarative_base()
 
-# Characters = enum.Enum("Characters", glob("assets/icons/*.png"))
-Characters = glob("assets/icons/*.png")
+icons_path = "assets/icons/"
+icons_ext = ".png"
+icons = glob(icons_path + "*" + icons_ext)
+icons = [i[len(icons_path):-len(icons_ext)] for i in icons]
+Characters = enum.Enum("Characters", sorted(icons))
 
 
 class Set(Base):
@@ -21,7 +24,7 @@ class Game(Base):
     id = Column(Integer, primary_key=True)
     set_id = Column(Integer, ForeignKey("set.id"))
     time_indices = relationship("TimeIndex")
-    ports = relationship("Ports")
+    ports = relationship("Port")
     sources = relationship("GameSource")
 
 
@@ -49,6 +52,10 @@ class PortState(Base):
     __tablename__ = "portstate"
     id = Column(Integer, primary_key=True)
     port_id = Column(Integer, ForeignKey("port.id"))
+
+    char = Column(Enum(Characters))
+    stocks = Column(Integer)
+    pct = Column(Integer)
 
 
 class TimeIndex(Base):

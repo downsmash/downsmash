@@ -1,8 +1,14 @@
 from trainer import Trainer
+import argparse
 
 
 def __main__():
-    tr = Trainer("vods/n0ne.mp4")
+    parser = argparse.ArgumentParser(description="Generate training images from a VOD.")
+    parser.add_argument("infile", type=str, description="video to be processed")
+
+    args = parser.parse_args()
+
+    tr = Trainer(args.infile)
 
     tr.train()
 

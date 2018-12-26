@@ -1,27 +1,30 @@
 import argparse
+import os.path
+from json import dump
 
 from segmenter import Segmenter
 
 
-def __main__():
+def __main__(args):
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("file", help="stream", type=str)
 
-    args = parser.parse_args()
+    args = parser.parse_args(args)
 
-    # with open(args.input) as f:
-    #    data = json.load(f)
     stream = args.file
 
     match = Segmenter(stream)
     match.parse()
 
-    def timeify(n):
-        mins, secs = int(n // 60), n % 60
-        return "{:d}:{:05.2f}".format(mins, secs)
+    _, basename = os.path.split(stream)
+    basename, _ = os.path.splitext(basename)
 
-    for start, end in match.chunks:
-        print(timeify(start), timeify(end))
+    outpath = os.path.join("data/{0}.json".format(basename))
+    with open(outpath, "w") as f:
+        dump(match.data, f, default=lambda obj: obj.__dict__,
+             indent=4, sort_keys=True)
+
 
 if __name__ == "__main__":
-    __main__()
+    import sys
+    __main__(sys.argv[1:])
