@@ -19,10 +19,15 @@ def __main__(args):
         for video in videos.sample(n=10)[0].tolist():
             if video not in cache.read().split("\n"):
                 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([video])
+                    try:
+                        ydl.download([video])
+                    except youtube_dl.utils.DownloadError:
+                        # Video predates 480p
+                        pass
                 try:
                     segment.__main__(["vods/{0}.mp4".format(video)])
                 except RuntimeError:
+                    # Parser couldn't find any ports
                     pass
 
                 cache.write("{0}\n".format(video))
