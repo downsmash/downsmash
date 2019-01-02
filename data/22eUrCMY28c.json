@@ -1,0 +1,40 @@
+{
+    "chunks": [
+        [
+            12,
+            60
+        ],
+        [
+            76,
+            152
+        ],
+        [
+            170,
+            322
+        ]
+    ],
+    "ports": [
+        null,
+        null,
+        {
+            "height": 95,
+            "left": 198,
+            "top": 241,
+            "width": 128
+        },
+        {
+            "height": 95,
+            "left": 300,
+            "top": 241,
+            "width": 128
+        },
+        null
+    ],
+    "scale": 0.7764963162482535,
+    "screen": {
+        "height": 319,
+        "left": 5,
+        "top": 22,
+        "width": 425
+    }
+}

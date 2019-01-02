@@ -68,6 +68,8 @@ class TemplateMatcher:
 
         return (scale, peaks)
 
+    # TODO This can be replaced by DBSCAN without a significant drop in
+    # performance
     def get_clusters(self, pts, max_distance=14, key=lambda x: x):
         clusters = []
         for pt in pts:

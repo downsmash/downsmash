@@ -24,33 +24,6 @@ class StreamParser:
     def parse(self):
         raise NotImplementedError
 
-    def locate_kde(self, feature, roi=None, tm=TemplateMatcher(), N=10,
-                   debug=False):
-        scales = []
-        peaks = []
-        for (n, scene) in self.sample_frames(num_samples=N):
-            cv2.imwrite("scene.png", scene)
-            scene = cv2.imread("scene.png")
-
-            if roi:
-                mask = roi.to_mask(self.shape.height, self.shape.width)
-            else:
-                mask = None
-
-            scale, these_peaks = tm.match(feature, scene,
-                                          mask=mask,
-                                          debug=debug)
-
-            if scale:
-                scales.append(scale)
-                peaks.extend(these_peaks)
-
-            if peaks:
-                kde = KernelDensity(kernel='gaussian', bandwidth=0.5)
-                uniq_peaks = list(set(peaks))
-                densities = kde(uniq_peaks)
-                return
-
     def locate(self, feature, roi=None, tm=TemplateMatcher(), N=10,
                debug=False):
         peaks = []
@@ -74,19 +47,21 @@ class StreamParser:
 
                 these_peaks = sorted(these_peaks, key=lambda pt: pt[1])
                 these_peaks = [loc for loc, corr in these_peaks]
+                if debug:
+                    logging.warn("%s", "\t".join(str(k) for k in these_peaks))
 
-                peaks.extend(these_peaks[:tm.max_clusters])
+                peaks.extend(these_peaks)
 
         feature_locations = [np.array(max(set(cluster), key=cluster.count))
                              for cluster in tm.get_clusters(peaks)]
         feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
 
         if best_scale_log:
-            mean_best_scale = sum(best_scale_log) / len(best_scale_log)
+            median_best_scale = np.median(best_scale_log)
         else:
-            mean_best_scale = None
+            median_best_scale = None
 
-        return (mean_best_scale, feature_locations)
+        return (median_best_scale, feature_locations)
 
     def sample_frames(self, start=None, end=None, interval=None,
                       num_samples=None, fuzz=0, color=False):
@@ -95,6 +70,8 @@ class StreamParser:
             raise ValueError('exactly one of (interval, num_samples) '
                              'must be set')
 
+        # TODO Make sure the VC object actually works so we don't divide by
+        # zero here
         video_length = self.vc.get(7) / self.vc.get(5)
         if not start or start < 0:
             start = 0
@@ -128,7 +105,7 @@ class StreamParser:
                     yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
         return
 
-    def overlay_map(self, num_samples=50, begin=None, end=None):
+    def overlay_map(self, num_samples=50, start=None, end=None):
         """Run a skewness-kurtosis filter on a sample of frames and
         edge-detect.
 
@@ -137,7 +114,7 @@ class StreamParser:
         """
         data = None
         for time, frame in self.sample_frames(num_samples=num_samples,
-                                              start=begin, end=end):
+                                              start=start, end=end):
             if not data:
                 data = [frame]
             else:

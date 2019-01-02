@@ -21,14 +21,14 @@ def __main__(args):
                 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                     try:
                         ydl.download([video])
+                        segment.__main__(["vods/{0}.mp4".format(video)])
                     except youtube_dl.utils.DownloadError:
                         # Video predates 480p
+                        continue
+                    except RuntimeError as e:
+                        # Parser had a problem somewhere
+                        print(str(e))
                         pass
-                try:
-                    segment.__main__(["vods/{0}.mp4".format(video)])
-                except RuntimeError:
-                    # Parser couldn't find any ports
-                    pass
 
                 cache.write("{0}\n".format(video))
 

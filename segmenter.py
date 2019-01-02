@@ -41,9 +41,9 @@ class Segmenter(StreamParser):
         """
 
         # Detect the percent signs in a random sample of frames.
-        tm = TemplateMatcher(max_clusters=2, scales=np.arange(0.6, 1.1, 0.03))
+        tm = TemplateMatcher(max_clusters=2, scales=np.arange(0.6, 1.1, 0.015))
         percent = cv2.imread("assets/pct.png")
-        scale, pct_locations = self.locate(percent, tm=tm, N=30)
+        scale, pct_locations = self.locate(percent, tm=tm, N=30, debug=True)
 
         # Group the returned locations to within 5 px tolerance on y-axis.
         pct_locations = sorted(pct_locations, key=lambda l: l[0] // 5)
@@ -53,12 +53,14 @@ class Segmenter(StreamParser):
         location_groups = itertools.groupby(pct_locations, lambda l: l[0] // 5)
         location_groups = [(k, list(g)) for k, g in location_groups]
 
+        print(location_groups)
+
         # Choose the biggest group.
         # TODO: Try to get locate() to use KDE.
         _, pct_locations = max(location_groups, key=lambda g: len(g[1]))
         pct_locations = list(pct_locations)
 
-        # print(pct_locations)
+        print(pct_locations)
 
         # Approximate screen Y-pos from percents.
         height, width = [x * scale / 0.05835 for x in percent.shape[:2]]
@@ -84,7 +86,8 @@ class Segmenter(StreamParser):
                 leftmost_port = port_no
 
         left = leftmost_pct - (.2 + .2381 * leftmost_port) * width
-        self.data["scale"] = (height / 411 * width / 548)**0.5
+        # self.data["scale"] = (height / 411 + width / 548) / 2
+        self.data["scale"] = scale
 
         return Rect(top, left, height, width) & self.shape
 
@@ -111,7 +114,7 @@ class Segmenter(StreamParser):
                 continue
 
             error = location[0] - (pct_top, pct_left)
-            logging.info("Detected port {0} at {1} "
+            logging.warn("Detected port {0} at {1} "
                          "(error {2[0]}px, {2[1]}px)"
                          .format(port_number + 1, location[0], error))
 
@@ -150,7 +153,7 @@ class Segmenter(StreamParser):
                                              cv2.TM_CCOEFF_NORMED)
                 _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
                 percent_corrs.append(max_corr)
-
+        # print(percent_corrs)
         return max(percent_corrs)
 
     def detect_match_chunks(self, max_error=.06):
