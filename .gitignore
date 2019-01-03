@@ -2,6 +2,7 @@ __pycache__/*
 meleedb-segment/__pycache__/*
 scene.png
 vods/*
+meleedb-segment/vods/*
 samples/*
 .ipynb_checkpoints/*
 
