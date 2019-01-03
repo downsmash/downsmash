@@ -5,9 +5,10 @@ meleedb-segment watches a video of a Melee set and outputs the (approximate) sta
 ## Synopsis
 Segment an individual VOD:
 ```
-$ python segment.py [vod]
+$ python segment.py [vod.mp4]
 ```
 Batch-process a set of VODs:
 ```
-$ python batch.py
+$ echo [youtubeID] | python batch.py
+$ sort -R batch/videos_melee.tsv | head -n10 | cut -f1 | python batch.py
 ```
