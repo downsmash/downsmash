@@ -2,7 +2,6 @@
 
 import logging
 import itertools
-import os.path
 
 import numpy as np
 import cv2
@@ -16,7 +15,7 @@ from .rect import Rect
 from .streamParser import StreamParser
 from .templateMatcher import TemplateMatcher
 
-
+# Read in percent sign
 nparr = np.fromstring(resource_string("core.resources", "pct.png"), np.uint8)
 PERCENT = cv2.imdecode(nparr, 1)
 
@@ -59,14 +58,10 @@ class Segmenter(StreamParser):
         location_groups = itertools.groupby(pct_locations, lambda l: l[0] // 5)
         location_groups = [(k, list(g)) for k, g in location_groups]
 
-        # print(location_groups)
-
         # Choose the biggest group.
         # TODO: Try to get locate() to use KDE.
         _, pct_locations = max(location_groups, key=lambda g: len(g[1]))
         pct_locations = list(pct_locations)
-
-        # print(pct_locations)
 
         # Approximate screen Y-pos from percents.
         height, width = [x * scale / 0.05835 for x in PERCENT.shape[:2]]
@@ -185,7 +180,8 @@ class Segmenter(StreamParser):
         deepest_min = max(rel_mins, key=lambda idx: min(e[idx - 1] - e[idx],
                                                         e[idx + 1] - e[idx]))
 
-        # Now split into negatives and positives on that minimum density.
+        # Now classify as Melee/no Melee based on whether we are greater/less
+        # than the argrelmin.
         split_point = deepest_min / 100
         groups = itertools.groupby(conf_series.iterrows(),
                                    lambda row: row[1]['median'] > split_point)
