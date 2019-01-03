@@ -2,6 +2,8 @@
 
 import numpy as np
 import cv2
+from sklearn.cluster import DBSCAN
+from itertools import groupby
 import logging
 
 
@@ -59,8 +61,8 @@ class TemplateMatcher:
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
-            clusters = self.get_clusters(good_points,
-                                         max_distance=self.max_distance)
+            clusters = self.get_clusters_DBSCAN(good_points,
+                                                max_distance=self.max_distance)
 
             peaks = [max(clust, key=lambda pt: peak_map[pt])
                      for clust in clusters]
@@ -82,6 +84,23 @@ class TemplateMatcher:
                 clusters.append([pt])
 
         return clusters
+
+    def get_clusters_DBSCAN(self, pts, max_distance=14, key=lambda x: x):
+        if pts:
+            kpts = [key(pt) for pt in pts]
+
+            clustering = DBSCAN(eps=max_distance, min_samples=1).fit(kpts)
+
+            labeled_pts = list(zip(kpts, clustering.labels_))
+            labeled_pts = sorted(labeled_pts, key=lambda p: p[1])
+
+            clusters = [list(g) for l, g in groupby(labeled_pts, key=lambda p: p[1])]
+            clusters = [[p[0] for p in clust] for clust in clusters]
+            print(clusters)
+
+            return clusters
+        else:
+            return []
 
     def find_best_scale(self, feature, scene, debug=False):
         best_corr = 0

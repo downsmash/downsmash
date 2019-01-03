@@ -53,7 +53,7 @@ class StreamParser:
                 peaks.extend(these_peaks)
 
         feature_locations = [np.array(max(set(cluster), key=cluster.count))
-                             for cluster in tm.get_clusters(peaks)]
+                             for cluster in tm.get_clusters_DBSCAN(peaks)]
         feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
 
         if best_scale_log:
