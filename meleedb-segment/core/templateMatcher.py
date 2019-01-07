@@ -29,7 +29,7 @@ class TemplateMatcher:
             scene *= mask
 
         if scale is None:
-            scale = self.find_best_scale(feature, scene, debug=debug)
+            scale = self.find_best_scale(feature, scene, debug=False)
         peaks = []
 
         if scale:
@@ -61,29 +61,13 @@ class TemplateMatcher:
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
-            clusters = self.get_clusters_DBSCAN(good_points,
-                                                max_distance=self.max_distance)
+            clusters = self.get_clusters_DBSCAN(good_points, max_distance=self.max_distance)
 
             peaks = [max(clust, key=lambda pt: peak_map[pt])
                      for clust in clusters]
             peaks = [(peak, peak_map[peak]) for peak in peaks]
 
         return (scale, peaks)
-
-    # TODO This can be replaced by DBSCAN without a significant drop in
-    # performance
-    def get_clusters(self, pts, max_distance=14, key=lambda x: x):
-        clusters = []
-        for pt in pts:
-            for idx, cluster in enumerate(clusters):
-                if min(np.linalg.norm(np.subtract(key(pt), key(x)))
-                       for x in cluster) < max_distance:
-                    clusters[idx] += [pt]
-                    break
-            else:
-                clusters.append([pt])
-
-        return clusters
 
     def get_clusters_DBSCAN(self, pts, max_distance=14, key=lambda x: x):
         if pts:
@@ -110,7 +94,7 @@ class TemplateMatcher:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
             result = cv2.matchTemplate(scene, scaled_feature, self.criterion)
-            _, max_val, _, max_loc = cv2.minMaxLoc(result)
+            _, max_val, _, _ = cv2.minMaxLoc(result)
 
             if max_val > best_corr:
                 best_corr = max_val

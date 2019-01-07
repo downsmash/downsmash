@@ -60,6 +60,3 @@ class Rect:
              self.left:(self.left + self.width + 1)] = (1, 1, 1)
 
         return mask.astype(np.uint8)
-
-    def serialize(self):
-        return self.__dict__()

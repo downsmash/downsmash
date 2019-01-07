@@ -29,7 +29,7 @@ class StreamParser:
         peaks = []
         best_scale_log = []
 
-        for (n, scene) in self.sample_frames(num_samples=N):
+        for (_, scene) in self.sample_frames(num_samples=N):
             cv2.imwrite("scene.png", scene)
             scene = cv2.imread("scene.png")
 
@@ -57,7 +57,7 @@ class StreamParser:
         feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
 
         if best_scale_log:
-            median_best_scale = np.median(best_scale_log)
+            median_best_scale = np.mean(best_scale_log)
         else:
             median_best_scale = None
 
@@ -104,41 +104,3 @@ class StreamParser:
                 else:
                     yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
         return
-
-    def overlay_map(self, num_samples=50, start=None, end=None):
-        """Run a skewness-kurtosis filter on a sample of frames and
-        edge-detect.
-
-        The areas of the video containing game feed should come back black.
-        Areas containing overlay or letterboxes will be visibly white.
-        """
-        data = None
-        for time, frame in self.sample_frames(num_samples=num_samples,
-                                              start=start, end=end):
-            if not data:
-                data = [frame]
-            else:
-                data += [frame]
-
-        sd_map = np.sqrt(np.var(data, axis=0))
-        skew_map = scipy.stats.skew(data, axis=0)
-        kurt_map = scipy.stats.kurtosis(data, axis=0)
-        min_map = np.minimum(skew_map, kurt_map)
-
-        map_min = min(min_map.flatten())
-        map_max = max(min_map.flatten())
-
-        # Clip to [0, 255], with 0=min and 255=max
-        clipped = ((min_map - map_min) / (map_max - map_min) * 255)
-        clipped = clipped.astype(np.uint8)
-
-        # Blur and edge detect.
-        blurred = cv2.blur(clipped, (5, 5))
-        edges = cv2.Canny(blurred, 50, 150)
-
-        # Areas that are constant throughout the video (letterboxes) will
-        # have 0 skew, 0 kurt, and 0 variance, so the skew-kurt filter
-        # will miss them
-        edges[np.where(sd_map < 0.01)] = 255
-
-        return edges

@@ -7,7 +7,8 @@ from core.segmenter import Segmenter
 
 def __main__(args):
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument("file", help="stream", type=str)
+    parser.add_argument("file", help="filepath for the VOD to be segmented", type=str)
+    parser.add_argument("outfile", help="filepath for the output JSON file", type=str)
 
     args = parser.parse_args(args)
 
@@ -17,11 +18,7 @@ def __main__(args):
     match = Segmenter(stream)
     match.parse()
 
-    _, basename = os.path.split(stream)
-    basename, _ = os.path.splitext(basename)
-
-    outpath = os.path.join("data/{0}.json".format(basename))
-    with open(outpath, "w") as f:
+    with open(args.outfile, "w") as f:
         dump(match.data, f, default=lambda obj: obj.__dict__,
              indent=4, sort_keys=True)
 

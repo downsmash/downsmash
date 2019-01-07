@@ -95,7 +95,7 @@ class Trainer(StreamParser):
         for start, end in self.chunks:
             for t, scene in self.sample_frames(start=start, end=end,
                                                interval=0.5, color=True):
-                for n, port in enumerate(self.ports):
+                for port in self.ports:
                     if port:
                         port_img = scene[port.top:(port.top + port.height),
                                          port.left:(port.left + port.width)]

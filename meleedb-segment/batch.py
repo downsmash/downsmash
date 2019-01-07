@@ -18,11 +18,14 @@ def __main__(args):
 
     with open(cachefile, "a+") as cache:
         for video in sys.stdin:
+            # Kill the newline at the end
+            video = video.strip()
             if video not in cache.read().split("\n"):
                 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                     try:
                         ydl.download([video])
-                        segment.__main__(["vods/{0}.mp4".format(video)])
+                        segment.__main__(["vods/{0}.mp4".format(video),
+                                          "../data/{0}.json".format(video)])
                     except youtube_dl.utils.DownloadError:
                         # Video predates 480p
                         continue
