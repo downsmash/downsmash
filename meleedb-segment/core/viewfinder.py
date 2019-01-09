@@ -48,6 +48,9 @@ class Viewfinder(StreamParser):
         tm = TemplateMatcher(scales=scales)
         scale, pct_locations = self.locate(PERCENT, tm=tm, N=30)
 
+        if not scale or not pct_locations:
+            raise RuntimeError('This doesn\'t appear to be Melee (no percent signs found!)')
+
         # Group the returned locations to within 5 px tolerance on y-axis.
         pct_locations = sorted(pct_locations, key=lambda l: l[0] // 5)
         location_groups = itertools.groupby(pct_locations, lambda l: l[0] // 5)

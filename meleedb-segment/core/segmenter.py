@@ -65,7 +65,6 @@ class Segmenter(StreamParser):
                                              cv2.TM_CCOEFF_NORMED)
                 _, max_corr, _, max_loc = cv2.minMaxLoc(corr_map)
                 percent_corrs.append(max_corr)
-        # print(percent_corrs)
         return max(percent_corrs)
 
     def detect_match_chunks(self, max_error=.06):

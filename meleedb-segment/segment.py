@@ -8,7 +8,6 @@ import cv2
 from core.segmenter import Segmenter
 from core.viewfinder import Viewfinder
 
-
 def __main__(args):
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("file", help="filepath for the VOD to be segmented", type=str)
