@@ -14,6 +14,7 @@ from pkg_resources import resource_string
 from .rect import Rect
 from .streamParser import StreamParser
 from .templateMatcher import TemplateMatcher
+from .viewfinder import Viewfinder
 
 # Read in percent sign
 nparr = np.fromstring(resource_string("core.resources", "pct.png"), np.uint8)

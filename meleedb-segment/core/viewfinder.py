@@ -1,21 +1,36 @@
 #!/usr/bin/python
 
+import logging
+import itertools
+
+import numpy as np
+import cv2
+import pandas as pd
+from sklearn.neighbors.kde import KernelDensity
+from scipy.signal import argrelmin
+import scipy.stats
+
+from pkg_resources import resource_string
+
 from .rect import Rect
 from .streamParser import StreamParser
 from .templateMatcher import TemplateMatcher
 
 
-PERCENT_Y_PCT = .871
-PERCENT_X_PCT = .2
-PERCENT_X_PCT_STEP = .2381
-PERCENT_HEIGHT = .06
-PERCENT_WIDTH = .06
+PERCENT_Y_POS = 358
+PERCENT_X_POS = 110
+PERCENT_X_POS_STEP = 132
+PERCENT_HEIGHT = 32
+PERCENT_WIDTH = 32
 
-PORT_Y_PCT = .75
-PORT_X_PCT = .0363
-PORT_X_PCT_STEP = .24
-PORT_HEIGHT = .18
-PORT_WIDTH = .1833
+PORT_Y_POS = 308
+PORT_X_POS = 20
+PORT_X_POS_STEP = 132
+PORT_HEIGHT = 74
+PORT_WIDTH = 100
+
+SCREEN_WIDTH = 548
+SCREEN_HEIGHT = 411
 
 # Read in percent sign
 nparr = np.fromstring(resource_string("core.resources", "pct.png"), np.uint8)
@@ -24,21 +39,13 @@ PERCENT = cv2.imdecode(nparr, 1)
 class Viewfinder(StreamParser):
 
     def __init__(self, filename, polling_interval=2):
-        super().__init__(self, filename)
+        StreamParser.__init__(self, filename)
         self.polling_interval = polling_interval
 
-    def get_feature_locations(self, feature, scales):
-
-        #
-        tm = TemplateMatcher(max_clusters=2, scales=scales)
-        scale, pct_locations = self.locate(feature, tm=tm, N=30)
-
-    def detect_screen(self):
-        """Attempt to detect the screen.
-        """
+    def get_pct_locations(self, scales):
 
         # Detect the percent signs in a random sample of frames.
-        tm = TemplateMatcher(max_clusters=2, scales=np.arange(0.6, 1.1, 0.015))
+        tm = TemplateMatcher(scales=scales)
         scale, pct_locations = self.locate(PERCENT, tm=tm, N=30)
 
         # Group the returned locations to within 5 px tolerance on y-axis.
@@ -50,32 +57,29 @@ class Viewfinder(StreamParser):
         _, pct_locations = max(location_groups, key=lambda g: len(g[1]))
         pct_locations = list(pct_locations)
 
+        return (scale, pct_locations)
+
+    def detect_screen(self):
+        """Attempt to detect the screen.
+        """
+        scale, pct_locations = self.get_pct_locations(scales=np.arange(0.6, 1.1, 0.03))
+
         # Approximate screen Y-pos from percents.
-        height, width = [x * scale / 0.05835 for x in PERCENT.shape[:2]]
-        top = np.mean(pct_locations, axis=0)[0] - PERCENT_Y_PCT * height
+        height, width = int(SCREEN_HEIGHT * scale), int(SCREEN_WIDTH * scale)
+        top = int(np.mean(pct_locations, axis=0)[0] - PERCENT_Y_POS * scale)
 
         # Determine the X-pos by the skewness-kurtosis method.
         logging.info("Generating skew-kurtosis map...")
-        overlay = self.overlay_map()
-        leftmost_pct = min(pct_locations, key=lambda pos: pos[1])[1]
+        skew_kurt = self.overlay_map()
 
-        leftmost_port = None
-        best_goods = 0
+        # Attempt to determine the Y-pos by KDE.
+        t = max(0, top)
+        goodnesses = [sum(sum(skew_kurt[t:t + height, left:left + width])) // 255
+                      for left in range(0, skew_kurt.shape[1] - width)]
+        print(goodnesses)
+        left = np.argmin(goodnesses)
 
-        # The leftmost percent sign can be one of four ports.
-        for port_no in range(4):
-            left = leftmost_pct - (PERCENT_X_PCT + PERCENT_X_PCT_STEP * port_no) * width
-            screen = Rect(top, left, height, width) & self.shape
-            pixels = overlay[screen.top:(screen.top + screen.height),
-                             screen.left:(screen.left + screen.width)]
-            goods = np.count_nonzero(pixels == 0)
-            if goods > best_goods:
-                best_goods = goods
-                leftmost_port = port_no
-
-        left = leftmost_pct - (PERCENT_X_PCT + PERCENT_X_PCT_STEP * leftmost_port) * width
-        # self.data["scale"] = (height / 411 + width / 548) / 2
-        self.data["scale"] = scale
+        print(scale, top, left, height, width)
 
         return Rect(top, left, height, width) & self.shape
 
@@ -108,12 +112,15 @@ class Viewfinder(StreamParser):
 
         # Blur and edge detect.
         blurred = cv2.blur(clipped, (5, 5))
-        edges = cv2.Canny(blurred, 50, 150)
+        # edges = cv2.Canny(blurred, 50, 150)
+        # edges = blurred
+        edges = cv2.Laplacian(blurred, cv2.CV_8U)
 
         # Areas that are constant throughout the video (letterboxes) will
         # have 0 skew, 0 kurt, and 0 variance, so the skew-kurt filter
         # will miss them
         edges[np.where(sd_map < 0.01)] = 255
+        _, edges = cv2.threshold(edges, 10, 255, cv2.THRESH_BINARY)
 
         return edges
 

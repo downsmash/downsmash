@@ -10,12 +10,11 @@ import logging
 class TemplateMatcher:
 
     def __init__(self, scales=np.arange(0.5, 1.0, 0.03),
-                 max_clusters=None, max_distance=14,
+                 max_distance=14,
                  thresh_min=50, thresh_max=200,
                  criterion=cv2.TM_CCOEFF_NORMED,
                  worst_match=0.75):
         self.scales = scales
-        self.max_clusters = max_clusters
         self.max_distance = max_distance
         self.thresh_min = thresh_min
         self.thresh_max = thresh_max
