@@ -48,7 +48,7 @@ class Segmenter(StreamParser):
 
         # Detect the percent signs in a random sample of frames.
         tm = TemplateMatcher(max_clusters=2, scales=np.arange(0.6, 1.1, 0.015))
-        scale, pct_locations = self.locate(PERCENT, tm=tm, N=30, debug=True)
+        scale, pct_locations = self.locate(PERCENT, tm=tm, N=30)
 
         # Group the returned locations to within 5 px tolerance on y-axis.
         pct_locations = sorted(pct_locations, key=lambda l: l[0] // 5)

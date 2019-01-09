@@ -15,6 +15,7 @@ def __main__(args):
     stream = os.path.realpath(args.file)
     outfile = os.path.realpath(args.outfile)
 
+    print(stream)
     match = Segmenter(stream)
     match.parse()
 
