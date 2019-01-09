@@ -1,5 +1,6 @@
 __pycache__/*
 meleedb-segment/__pycache__/*
+meleedb-segment/core/__pycache__/*
 scene.png
 vods/*
 meleedb-segment/vods/*
