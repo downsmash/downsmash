@@ -18,10 +18,7 @@ def __main__(args):
 
     with open(cachefile, "a+") as cache:
         for video in sys.stdin:
-<<<<<<< HEAD
             # Kill the newline at the end
-=======
->>>>>>> master
             video = video.strip()
             if video not in cache.read().split("\n"):
                 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
