@@ -1,8 +1,6 @@
-__pycache__/*
-meleedb-segment/__pycache__/*
+__pycache__/
 scene.png
-vods/*
-meleedb-segment/vods/*
-samples/*
-.ipynb_checkpoints/*
+vods/
+samples/
+.ipynb_checkpoints/
 

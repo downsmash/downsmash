@@ -12,3 +12,6 @@ Batch-process a set of VODs:
 $ echo [youtubeID] | python batch.py
 $ sort -R batch/videos_melee.tsv | head -n10 | cut -f1 | python batch.py
 ```
+
+## If you'd like to help
+Good things come to those who wait.
