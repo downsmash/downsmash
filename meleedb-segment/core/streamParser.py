@@ -4,9 +4,6 @@ import cv2
 import numpy as np
 from random import randint
 import logging
-import scipy.stats
-from sklearn.neighbors import KernelDensity
-from scipy.signal import argrelmax
 
 from .rect import Rect
 from .templateMatcher import TemplateMatcher

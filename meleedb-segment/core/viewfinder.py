@@ -62,7 +62,8 @@ class Viewfinder(StreamParser):
     def detect_screen(self):
         """Attempt to detect the screen.
         """
-        scale, pct_locations = self.get_pct_locations(scales=np.arange(0.6, 1.1, 0.03))
+        scale, pct_locations = self.get_pct_locations(scales=np.arange(0.72, 0.87, 0.03))
+        self.scale = scale
 
         # Approximate screen Y-pos from percents.
         height, width = int(SCREEN_HEIGHT * scale), int(SCREEN_WIDTH * scale)
@@ -70,18 +71,17 @@ class Viewfinder(StreamParser):
 
         # Determine the X-pos by the skewness-kurtosis method.
         logging.info("Generating skew-kurtosis map...")
-        skew_kurt = self.overlay_map()
+        skew_kurt = self.overlay_map() // 255
 
-        # Attempt to determine the Y-pos by KDE.
         t = max(0, top)
-        goodnesses = [sum(sum(skew_kurt[t:t + height, left:left + width])) // 255
-                      for left in range(0, skew_kurt.shape[1] - width)]
-        print(goodnesses)
+        goodnesses = [sum(sum(skew_kurt[t:t + height, left:left + width]))
+                      for left in range(skew_kurt.shape[1] - width)]
+        goodnesses = np.array(goodnesses)
+
         left = np.argmin(goodnesses)
-
-        print(scale, top, left, height, width)
-
-        return Rect(top, left, height, width) & self.shape
+        
+        self.screen = Rect(top, left, height, width) & self.shape
+        return self.screen
 
     def overlay_map(self, num_samples=50, start=None, end=None):
         """Run a skewness-kurtosis filter on a sample of frames and
@@ -112,55 +112,58 @@ class Viewfinder(StreamParser):
 
         # Blur and edge detect.
         blurred = cv2.blur(clipped, (5, 5))
-        # edges = cv2.Canny(blurred, 50, 150)
-        # edges = blurred
         edges = cv2.Laplacian(blurred, cv2.CV_8U)
 
         # Areas that are constant throughout the video (letterboxes) will
         # have 0 skew, 0 kurt, and 0 variance, so the skew-kurt filter
         # will miss them
         edges[np.where(sd_map < 0.01)] = 255
-        _, edges = cv2.threshold(edges, 10, 255, cv2.THRESH_BINARY)
+        _, edges = cv2.threshold(edges, 7, 255, cv2.THRESH_BINARY)
 
         return edges
 
     def detect_ports(self, max_error=0.06):
         ports = []
+        errors = []
         # TODO DRY this out
         for port_number in range(4):
-            pct_xloc = PERCENT_X_PCT + PERCENT_X_PCT_STEP * port_number
-            (pct_top, pct_left) = self.data["screen"][PERCENT_Y_PCT, pct_xloc]
-            pct_roi_top = pct_top - max_error * self.data["screen"].height
-            pct_roi_left = pct_left - max_error * self.data["screen"].width
-            pct_roi_height = (PERCENT_HEIGHT + 2 * max_error) * self.data["screen"].height
-            pct_roi_width = (PERCENT_WIDTH + 2 * max_error) * self.data["screen"].width
+            pct_left = self.screen.left + (PERCENT_X_POS + port_number * PERCENT_X_POS_STEP) * self.scale
+            pct_top = self.screen.top + PERCENT_Y_POS * self.scale
+
+            pct_roi_top = pct_top - max_error * self.screen.height
+            pct_roi_left = pct_left - max_error * self.screen.width
+            pct_roi_height = PERCENT_HEIGHT * self.scale + 2 * max_error * self.screen.height
+            pct_roi_width = PERCENT_WIDTH * self.scale + 2 * max_error * self.screen.width
             pct_roi = Rect(pct_roi_top, pct_roi_left,
                            pct_roi_height, pct_roi_width)
 
-            pct_roi &= self.data["screen"]
+            pct_roi &= self.screen
 
-            tm = TemplateMatcher(max_clusters=1, scales=[self.data["scale"]],
-                                 worst_match=0.6)
+            tm = TemplateMatcher(scales=[self.scale], worst_match=0.6)
             scale, location = self.locate(PERCENT, N=10, tm=tm, roi=pct_roi)
             if scale is None:
                 ports.append(None)
                 continue
 
+            # Actual minus predicted
             error = location[0] - (pct_top, pct_left)
             logging.warn("Detected port {0} at {1} "
                          "(error {2[0]}px, {2[1]}px)"
                          .format(port_number + 1, location[0], error))
 
-            port_xloc = PORT_X_PCT + PORT_X_PCT_STEP * port_number
-            (port_top, port_left) = self.data["screen"][PORT_Y_PCT, port_xloc]
-            port_roi_top = port_top - max_error * self.data["screen"].height
-            port_roi_left = port_left - max_error * self.data["screen"].width
-            port_roi_height = (PORT_HEIGHT + 2 * max_error) * self.data["screen"].height
-            port_roi_width = (PORT_WIDTH + 2 * max_error) * self.data["screen"].width
-            port_roi = Rect(port_roi_top, port_roi_left,
-                            port_roi_height, port_roi_width)
+            errors.append(error)
 
-            port_roi &= self.data["screen"]
+            port_left = self.screen.left + (PORT_X_POS + port_number * PORT_X_POS_STEP) * self.scale
+            port_top = self.screen.top + PORT_Y_POS * self.scale
+
+            port_roi_top = port_top - max_error * self.screen.height
+            port_roi_left = port_left - max_error * self.screen.width
+            port_roi_height = PORT_HEIGHT * self.scale + 2 * max_error * self.screen.height
+            port_roi_width = PORT_WIDTH * self.scale + 2 * max_error * self.screen.width
+            port_roi = Rect(port_roi_top, port_roi_left,
+                           port_roi_height, port_roi_width)
+
+            port_roi &= self.screen
             ports.append(port_roi)
 
         return ports

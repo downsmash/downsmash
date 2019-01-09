@@ -79,7 +79,6 @@ class TemplateMatcher:
 
             clusters = [list(g) for l, g in groupby(labeled_pts, key=lambda p: p[1])]
             clusters = [[p[0] for p in clust] for clust in clusters]
-            print(clusters)
 
             return clusters
         else:
