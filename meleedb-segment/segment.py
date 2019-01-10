@@ -1,6 +1,5 @@
 import argparse
 import os.path
-import logging
 from json import dump
 
 import cv2
@@ -21,10 +20,6 @@ def __main__(args):
     filename = os.path.basename(stream)
     filename, _ = os.path.splitext(filename)
 
-    LOGFMT = "[{0}] [%(msecs)d] [%(filename)s/%(funcName)s] %(message)s".format(filename)
-    logging.basicConfig(format=LOGFMT)
-
-    print(stream)
     match = Segmenter(stream)
     match.parse()
 

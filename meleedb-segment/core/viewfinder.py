@@ -17,6 +17,8 @@ from .streamParser import StreamParser
 from .templateMatcher import TemplateMatcher
 
 
+logger = logging.getLogger(__name__)
+
 PERCENT_Y_POS = 358
 PERCENT_X_POS = 110
 PERCENT_X_POS_STEP = 132
@@ -73,7 +75,7 @@ class Viewfinder(StreamParser):
         top = int(np.mean(pct_locations, axis=0)[0] - PERCENT_Y_POS * scale)
 
         # Determine the X-pos by the skewness-kurtosis method.
-        logging.info("Generating skew-kurtosis map...")
+        logger.info("Generating skew-kurtosis map...")
         skew_kurt = self.overlay_map() // 255
 
         t = max(0, top)
@@ -150,7 +152,7 @@ class Viewfinder(StreamParser):
 
             # Actual minus predicted
             error = location[0] - (pct_top, pct_left)
-            logging.warn("Detected port {0} at {1} "
+            logger.warn("Detected port {0} at {1} "
                          "(error {2[0]}px, {2[1]}px)"
                          .format(port_number + 1, location[0], error))
 

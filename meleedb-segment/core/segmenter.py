@@ -20,6 +20,8 @@ from .viewfinder import Viewfinder
 nparr = np.fromstring(resource_string("core.resources", "pct.png"), np.uint8)
 PERCENT = cv2.imdecode(nparr, 1)
 
+logger = logging.getLogger(__name__)
+
 
 class Segmenter(StreamParser):
 
@@ -34,15 +36,15 @@ class Segmenter(StreamParser):
 
         self.data["screen"] = vf.detect_screen()
         self.data["scale"] = (self.data["screen"].width / 548 + self.data["screen"].height / 411) / 2
-        logging.warn("Screen is at {0}".format(self.data["screen"]))
+        logger.warn("Screen is at {0}".format(self.data["screen"]))
 
-        logging.warn("Estimated scale is {scale}".format(**self.data))
+        logger.warn("Estimated scale is {scale}".format(**self.data))
 
         self.data["ports"] = vf.detect_ports()
         if not self.data["ports"]:
             raise RuntimeError("No ports found!")
 
-        logging.warn("Ports are at {0} {1} {2} {3}".format(*self.data["ports"]))
+        logger.warn("Ports are at {0} {1} {2} {3}".format(*self.data["ports"]))
 
         self.data["chunks"] = self.detect_match_chunks()
 
@@ -74,7 +76,7 @@ class Segmenter(StreamParser):
             conf = self.calculate_frame_confidence(scene)
             point = [t, conf]
 
-            logging.warn("{0}\t{1}".format(*point))
+            logger.warn("{0}\t{1}".format(*point))
             conf_series.append(point)
 
         # Perform median smoothing.

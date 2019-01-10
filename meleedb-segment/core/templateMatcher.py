@@ -6,18 +6,16 @@ from sklearn.cluster import DBSCAN
 from itertools import groupby
 import logging
 
+logger = logging.getLogger(__name__)
 
 class TemplateMatcher:
 
     def __init__(self, scales=np.arange(0.5, 1.0, 0.03),
                  max_distance=14,
-                 thresh_min=50, thresh_max=200,
                  criterion=cv2.TM_CCOEFF_NORMED,
                  worst_match=0.75):
         self.scales = scales
         self.max_distance = max_distance
-        self.thresh_min = thresh_min
-        self.thresh_max = thresh_max
 
         self.criterion = criterion
         self.worst_match = worst_match
@@ -35,9 +33,8 @@ class TemplateMatcher:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
             if edge:
-                scene = cv2.Canny(scene, self.thresh_min, self.thresh_max)
-                scaled_feature = cv2.Canny(scaled_feature, self.thresh_min,
-                                           self.thresh_max)
+                scene = cv2.Laplacian(scene, cv2.CV_8U)
+                scaled_feature = cv2.Laplacian(scaled_feature, cv2.CV_8U)
 
             # Threshold for peaks.
             peak_map = cv2.matchTemplate(scene, scaled_feature,
@@ -53,7 +50,7 @@ class TemplateMatcher:
             good_points = list(zip(*good_points))
 
             if debug:
-                logging.warn("%f %f %f %s %s", scale, self.worst_match,
+                logger.warn("%f %f %f %s %s", scale, self.worst_match,
                              best_val, best_loc, good_points)
 
                 cv2.imshow('edges', scene)
@@ -99,7 +96,7 @@ class TemplateMatcher:
                 best_scale = scale
 
         if debug:
-            logging.warn("%f %f", best_scale, best_corr)
+            logger.warn("%f %f", best_scale, best_corr)
 
         if best_corr > self.worst_match:
             return best_scale

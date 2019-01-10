@@ -8,8 +8,7 @@ import logging
 from .rect import Rect
 from .templateMatcher import TemplateMatcher
 
-logging.basicConfig(format="%(message)s")
-
+logger = logging.getLogger(__name__)
 
 class StreamParser:
 
@@ -45,7 +44,7 @@ class StreamParser:
                 these_peaks = sorted(these_peaks, key=lambda pt: pt[1])
                 these_peaks = [loc for loc, corr in these_peaks]
                 if debug:
-                    logging.warn("%s", "\t".join(str(k) for k in these_peaks))
+                    logger.warn("%s", "\t".join(str(k) for k in these_peaks))
 
                 peaks.extend(these_peaks)
 
@@ -95,7 +94,7 @@ class StreamParser:
                 cv2.imwrite('scene.png', frame)
                 frame = cv2.imread('scene.png', cv2.IMREAD_COLOR)
 
-                logging.info('%d\n', time)
+                logger.info('%d\n', time)
                 if color:
                     yield (time, frame)
                 else:
