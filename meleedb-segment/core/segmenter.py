@@ -54,14 +54,14 @@ class Segmenter(StreamParser):
 
         scaled_percent = cv2.resize(
             PERCENT, (0, 0), fx=self.data["scale"], fy=self.data["scale"])
-        scaled_percent = cv2.Canny(scaled_percent, 50, 200)
+        scaled_percent = cv2.Laplacian(scaled_percent, cv2.CV_8U)
 
         percent_corrs = []
         for port_number, roi in enumerate(self.data["ports"]):
             if roi is not None:
                 scene_roi = scene[roi.top:(roi.top + roi.height),
                                   roi.left:(roi.left + roi.width)]
-                scene_roi = cv2.Canny(scene_roi, 50, 200)
+                scene_roi = cv2.Laplacian(scene_roi, cv2.CV_8U)
 
                 corr_map = cv2.matchTemplate(scene_roi, scaled_percent,
                                              cv2.TM_CCOEFF_NORMED)

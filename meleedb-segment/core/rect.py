@@ -9,12 +9,15 @@ class Rect:
         self.left = int(left)
         self.height = int(height)
         self.width = int(width)
-
-    def __str__(self):
-        return '{height}x{width}+{top}+{left}'.format(**self.__dict__)
+        self.children = []
 
     def __repr__(self):
-        return '{height}x{width}+{top}+{left}'.format(**self.__dict__)
+        this_repr = ['{height}x{width}+{top}+{left}'.format(**self.__dict__)]
+        for child in self.children:
+            for line in repr(child).split("\n"):
+                this_repr.append("-> " + line)
+
+        return "\n".join(this_repr)
 
     def __and__(self, other):
         """Return the intersection of ''self'' and ''other''.

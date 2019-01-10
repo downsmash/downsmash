@@ -45,7 +45,6 @@ class Viewfinder(StreamParser):
         self.polling_interval = polling_interval
 
     def get_pct_locations(self, scales):
-
         # Detect the percent signs in a random sample of frames.
         tm = TemplateMatcher(scales=scales)
         scale, pct_locations = self.locate(PERCENT, tm=tm, N=30)
