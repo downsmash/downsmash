@@ -35,7 +35,7 @@ class Segmenter(StreamParser):
         vf = Viewfinder(self.filename, polling_interval=self.polling_interval)
 
         self.data["screen"] = vf.detect_screen()
-        self.data["scale"] = (self.data["screen"].width / 548 + self.data["screen"].height / 411) / 2
+        self.data["scale"] = vf.scale
         logger.warn("Screen is at {0}".format(self.data["screen"]))
 
         logger.warn("Estimated scale is {scale}".format(**self.data))

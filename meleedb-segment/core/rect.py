@@ -32,27 +32,6 @@ class Rect:
                         overlap_bottom - overlap_top,
                         overlap_right - overlap_left)
 
-    def __getitem__(self, given):
-        """''given'' must be a 2-tuple between 0 and 1 or a slice.
-        If the former, return the pixel coordinates equivalent to the
-        percentages specified by given = (ypct, xpct).
-        If the latter, return the subrectangle specified by the slice
-        beginning and end values.
-        """
-        if isinstance(given, slice):
-            if given.step:
-                raise ValueError('Rect getitem steps are not supported')
-            top, left = given.start
-            bottom, right = given.end
-            return Rect(top * self.height,
-                        left * self.width,
-                        (bottom - top) * self.height,
-                        (right - left) * self.width)
-        else:
-            y, x = given
-            return np.array((int(self.top + y * self.height),
-                             int(self.left + x * self.width)))
-
     def to_mask(self, height, width):
         mask = np.zeros((height, width, 3))
 
