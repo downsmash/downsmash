@@ -90,6 +90,9 @@ class Viewfinder(StreamParser):
         self.screen = Rect(top, left, height, width) & self.shape
         ports, predicted, locations = self.detect_ports()
 
+        if not predicted or not locations:
+            raise RuntimeError('This doesn\'t appear to be Melee (no percent signs found!)')
+
         hommat = []
         for p in predicted:
             hommat.append([p[0], 1, 0])

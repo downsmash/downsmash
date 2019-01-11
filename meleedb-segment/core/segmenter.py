@@ -79,28 +79,42 @@ class Segmenter(StreamParser):
             logger.warn("{0}\t{1}".format(*point))
             conf_series.append(point)
 
-        # Perform median smoothing.
         conf_series = pd.DataFrame(conf_series, columns=['time', 'conf'])
-        conf_series['median'] = conf_series['conf'].rolling(5).median()
-        conf_series['median'] = conf_series['median'].fillna(method='bfill')
-        conf_series['median'] = conf_series['median'].fillna(method='ffill')
+        confs = conf_series['conf']
+
+        p05, p95 = confs.quantile((0.05, 0.95))
+        samples = np.linspace(p05, p95, num=100)
 
         # Find the minimum kernel density.
         kde = KernelDensity(kernel='gaussian', bandwidth=.005)
-        kde = kde.fit(np.array(conf_series['median']).reshape(-1, 1))
-        e = kde.score_samples(np.linspace(0, 1, num=100).reshape(-1, 1))
+        kde = kde.fit(np.array(confs).reshape(-1, 1))
+        e = kde.score_samples(samples.reshape(-1, 1))
 
         rel_mins = argrelmin(e)[0]
         deepest_min = max(rel_mins, key=lambda idx: min(e[idx - 1] - e[idx],
                                                         e[idx + 1] - e[idx]))
+        split_point = samples[deepest_min]
+
+        # How separated are the two groups?
+        mean_positive = np.mean(confs[confs >= split_point])
+        mean_negative = np.mean(confs[confs < split_point])
+        logging.warn("Group means are (+){0} (-){1}".format(mean_positive, mean_negative))
+
+        # Perform median smoothing.
+        conf_series['median'] = conf_series['conf'].rolling(5).median()
+        conf_series['median'] = conf_series['median'].fillna(method='bfill')
+        conf_series['median'] = conf_series['median'].fillna(method='ffill')
 
         # Now classify as Melee/no Melee based on whether we are greater/less
-        # than the argrelmin.
-        split_point = deepest_min / 100
+        # than the relmin.
         groups = itertools.groupby(conf_series.iterrows(),
                                    lambda row: row[1]['median'] > split_point)
         groups = [(k, list(g)) for k, g in groups]
         matches = [(self.polling_interval * g[0][0],
                     self.polling_interval * g[-1][0]) for k, g in groups if k]
+
+        for n, match in enumerate(matches):
+            start, end = match
+            logging.warn("Estimated game {0} is {1}-{2} s".format(n, start, end))
 
         return matches
