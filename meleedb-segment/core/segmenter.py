@@ -40,7 +40,7 @@ class Segmenter(StreamParser):
 
         logger.warn("Estimated scale is {scale}".format(**self.data))
 
-        self.data["ports"] = vf.detect_ports()
+        self.data["ports"], _, _ = vf.detect_ports()
         if not self.data["ports"]:
             raise RuntimeError("No ports found!")
 

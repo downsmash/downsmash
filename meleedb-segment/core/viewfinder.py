@@ -19,14 +19,14 @@ from .templateMatcher import TemplateMatcher
 
 logger = logging.getLogger(__name__)
 
-PERCENT_Y_POS = 358
+PERCENT_Y_POS = 378
 PERCENT_X_POS = 110
 PERCENT_X_POS_STEP = 132
 PERCENT_HEIGHT = 32
 PERCENT_WIDTH = 32
 
 PORT_Y_POS = 308
-PORT_X_POS = 20
+PORT_X_POS = 26
 PORT_X_POS_STEP = 132
 PORT_HEIGHT = 74
 PORT_WIDTH = 100
@@ -70,8 +70,9 @@ class Viewfinder(StreamParser):
         self.scale = scale
 
         # Approximate screen Y-pos from percents.
-        height, width = int(SCREEN_HEIGHT * scale), int(SCREEN_WIDTH * scale)
-        top = int(np.mean(pct_locations, axis=0)[0] - PERCENT_Y_POS * scale)
+        height = int(round(SCREEN_HEIGHT * scale))
+        width = int(round(SCREEN_WIDTH * scale))
+        top = int(round(np.mean(pct_locations, axis=0)[0] - PERCENT_Y_POS * scale))
 
         # Determine the X-pos by the skewness-kurtosis method.
         logger.info("Generating skew-kurtosis map...")
@@ -84,6 +85,37 @@ class Viewfinder(StreamParser):
 
         left = np.argmin(goodnesses)
         
+        print(top, left, height, width)
+
+        self.screen = Rect(top, left, height, width) & self.shape
+        ports, predicted, locations = self.detect_ports()
+
+        hommat = []
+        for p in predicted:
+            hommat.append([p[0], 1, 0])
+            hommat.append([p[1], 0, 1])
+
+        respmat = []
+        for loc in locations:
+            respmat.extend(loc)
+        respmat = np.array(respmat).transpose()
+
+        print(hommat)
+        print(respmat)
+
+        ols, _, _, _ = np.linalg.lstsq(hommat, respmat, rcond=None)
+        print(ols)
+        s, ty, tx = ols
+        self.scale *= s
+        height *= s
+        width *= s
+        left *= s
+        left += tx
+        top *= s
+        top += ty
+
+        print(top, left, height, width)
+
         self.screen = Rect(top, left, height, width) & self.shape
         return self.screen
 
@@ -128,7 +160,8 @@ class Viewfinder(StreamParser):
 
     def detect_ports(self, max_error=0.06):
         ports = []
-        errors = []
+        predicted = []
+        locations = []
         # TODO DRY this out
         for port_number in range(4):
             pct_left = self.screen.left + (PERCENT_X_POS + port_number * PERCENT_X_POS_STEP) * self.scale
@@ -145,6 +178,7 @@ class Viewfinder(StreamParser):
 
             tm = TemplateMatcher(scales=[self.scale], worst_match=0.6)
             scale, location = self.locate(PERCENT, N=10, tm=tm, roi=pct_roi)
+
             if scale is None:
                 ports.append(None)
                 continue
@@ -154,8 +188,10 @@ class Viewfinder(StreamParser):
             logger.warn("Detected port {0} at {1} "
                          "(error {2[0]}px, {2[1]}px)"
                          .format(port_number + 1, location[0], error))
+            print(pct_top, pct_left)
 
-            errors.append(error)
+            predicted.append([pct_top, pct_left])
+            locations.append(location[0])
 
             port_left = self.screen.left + (PORT_X_POS + port_number * PORT_X_POS_STEP) * self.scale
             port_top = self.screen.top + PORT_Y_POS * self.scale
@@ -170,4 +206,4 @@ class Viewfinder(StreamParser):
             port_roi &= self.screen
             ports.append(port_roi)
 
-        return ports
+        return (ports, predicted, locations)
