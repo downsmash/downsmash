@@ -19,14 +19,14 @@ from .templateMatcher import TemplateMatcher
 
 logger = logging.getLogger(__name__)
 
-PERCENT_Y_POS = 378
+PERCENT_Y_POS = 358
 PERCENT_X_POS = 110
 PERCENT_X_POS_STEP = 132
 PERCENT_HEIGHT = 32
 PERCENT_WIDTH = 32
 
 PORT_Y_POS = 308
-PORT_X_POS = 26
+PORT_X_POS = 20
 PORT_X_POS_STEP = 132
 PORT_HEIGHT = 74
 PORT_WIDTH = 100
@@ -100,11 +100,8 @@ class Viewfinder(StreamParser):
             respmat.extend(loc)
         respmat = np.array(respmat).transpose()
 
-        print(hommat)
-        print(respmat)
-
         ols, _, _, _ = np.linalg.lstsq(hommat, respmat, rcond=None)
-        print(ols)
+
         s, ty, tx = ols
         self.scale *= s
         height *= s
@@ -113,8 +110,6 @@ class Viewfinder(StreamParser):
         left += tx
         top *= s
         top += ty
-
-        print(top, left, height, width)
 
         self.screen = Rect(top, left, height, width) & self.shape
         return self.screen
@@ -188,7 +183,6 @@ class Viewfinder(StreamParser):
             logger.warn("Detected port {0} at {1} "
                          "(error {2[0]}px, {2[1]}px)"
                          .format(port_number + 1, location[0], error))
-            print(pct_top, pct_left)
 
             predicted.append([pct_top, pct_left])
             locations.append(location[0])
