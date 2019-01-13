@@ -80,8 +80,6 @@ class StreamParser:
             raise ValueError('exactly one of (interval, num_samples) '
                              'must be set')
 
-        # TODO Make sure the VC object actually works so we don't divide by
-        # zero here
         try:
             self.length = self.vc.get(7) / self.vc.get(5)
         except ZeroDivisionError:

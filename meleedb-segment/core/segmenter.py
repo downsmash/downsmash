@@ -50,9 +50,14 @@ class Segmenter(StreamParser):
         logging.warn("Beginning segmentation...")
         self.data["matches"] = self.detect_match_chunks()
 
+        def timeify(t):
+            t = float(t)
+            mins, secs = t // 60, t % 60
+            return "{:.0f}:{:05.2f}".format(mins, secs)
+
         for n, match in enumerate(self.data["matches"]):
             start, end = match
-            logger.warn("Estimated game {0} is {1}-{2} s".format(n + 1, start, end))
+            logger.warn("Estimated game {0} is {1}-{2}".format(n + 1, timeify(start), timeify(end)))
 
         logging.warn("Refining match boundaries...")
         for n, match in enumerate(self.data["matches"]):
@@ -60,7 +65,7 @@ class Segmenter(StreamParser):
             start = self.find_match_boundary(start)
             end = self.find_match_boundary(end)
             self.data["matches"][n] = (start, end)
-            logger.warn("Estimated game {0} is {1}-{2} s".format(n + 1, start, end))
+            logger.warn("Estimated game {0} is {1}-{2}".format(n + 1, timeify(start), timeify(end)))
 
     def calculate_frame_confidence(self, scene):
         cv2.imwrite("scene.png", scene)
@@ -142,12 +147,16 @@ class Segmenter(StreamParser):
         # f(t) = conf_at(t) - self.threshold
         def conf_at(t):
             scene = self.get_frame(t)
-            return self.calculate_frame_confidence(scene)
+            if scene is not None:
+                return self.calculate_frame_confidence(scene)
 
         window = self.min_gap * 1.5
+        tolerance = 0.1
 
         start = max(0, t - window / 2)
-        end = min(self.length, t + window / 2)
+        # Have to read from strictly before the end of the video.
+        # length() - 1, etc.
+        end = min(self.length - tolerance, t + window / 2)
 
         # First make sure we have an interval to which bisection is applicable.
         # Also compute start and end confs.
@@ -168,7 +177,7 @@ class Segmenter(StreamParser):
             plus_to_minus = (start_conf > self.threshold > end_conf)
             minus_to_plus = (start_conf < self.threshold < end_conf)
 
-        while end - start > 0.1:
+        while end - start > tolerance:
             middle = (start + end) / 2
             middle_conf = conf_at(middle)
             if np.sign(middle_conf - self.threshold) == np.sign(start_conf - self.threshold):

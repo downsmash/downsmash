@@ -13,11 +13,17 @@ logger = logging.getLogger(__name__)
 
 def __main__(args):
     parser = argparse.ArgumentParser(description="",
-                                     epilog="exactly one of --output [file] or"
-                                            "--stdout is required.")
-    parser.add_argument("infile", help="filepath for the VOD to be segmented", type=str)
-    parser.add_argument("-o", "--output", help="filepath for the output JSON file", type=str)
-    parser.add_argument("--stdout", help="print segmentation data to stdout", action="store_true")
+                                     epilog="exactly one of --output [file] "
+                                            "or --stdout is required.")
+    parser.add_argument("infile",
+                        help="filepath for the VOD to be segmented",
+                        type=str)
+    parser.add_argument("-o", "--output",
+                        help="filepath for the output JSON file",
+                        type=str)
+    parser.add_argument("--stdout",
+                        help="print segmentation data to stdout",
+                        action="store_true")
 
     args = parser.parse_args(args)
 
@@ -28,7 +34,8 @@ def __main__(args):
     elif args.output and not args.stdout:
         output = os.path.realpath(args.output)
     else:
-        raise ArgumentError('exactly one of --output [file] or --stdout is required')
+        raise ArgumentError("exactly one of --output [file] "
+                            "or --stdout is required")
     
     filename = os.path.basename(stream)
     filename, _ = os.path.splitext(filename)

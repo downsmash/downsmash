@@ -28,11 +28,12 @@ def __main__(args):
                     try:
                         ydl.download([video])
                         segment.__main__(["vods/{0}.mp4".format(video),
-                                          "-o", "../data/{0}.json".format(video)])
+                                          "-o",
+                                          "../data/{0}.json".format(video)])
                     except youtube_dl.utils.DownloadError:
                         # Video predates 480p
                         logger.error("Segmentation failed!")
-                        err = ("The parser does not currently support videos"
+                        err = ("The parser does not currently support videos "
                                "in resolution lower than 480p.")
                         logger.error("Guru meditation: " + err)
                         continue
