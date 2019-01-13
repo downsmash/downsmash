@@ -5,7 +5,8 @@ meleedb-segment watches a video of a Melee set and outputs the (approximate) sta
 ## Synopsis
 Segment an individual VOD:
 ```
-$ python segment.py [vod.mp4] [output.json]
+$ python segment.py [vod.mp4] -o [output.json]  # write to output.json
+$ python segment.py [vod.mp4] --stdout          # write to stdout
 ```
 Batch-process a set of VODs:
 ```

@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
+import logging
 import sys
 import os.path
 import youtube_dl
 
 import segment
+
+logger = logging.getLogger(__name__)
 
 
 def __main__(args):
@@ -25,13 +28,18 @@ def __main__(args):
                     try:
                         ydl.download([video])
                         segment.__main__(["vods/{0}.mp4".format(video),
-                                          "../data/{0}.json".format(video)])
+                                          "-o", "../data/{0}.json".format(video)])
                     except youtube_dl.utils.DownloadError:
                         # Video predates 480p
+                        logger.error("Segmentation failed!")
+                        err = ("The parser does not currently support videos"
+                               "in resolution lower than 480p.")
+                        logger.error("Guru meditation: " + err)
                         continue
                     except RuntimeError as e:
                         # Parser had a problem somewhere
-                        print(str(e))
+                        logger.error("Segmentation failed!")
+                        logger.error("Guru meditation: " + str(e))
                         pass
 
                 cache.write("{0}\n".format(video))
