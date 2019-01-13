@@ -1,0 +1,50 @@
+{
+    "chunks": [
+        [
+            0,
+            206
+        ],
+        [
+            250,
+            414
+        ]
+    ],
+    "ports": [
+        {
+            "children": [],
+            "height": 96,
+            "left": 202,
+            "top": 254,
+            "width": 119
+        },
+        {
+            "children": [],
+            "height": 96,
+            "left": 295,
+            "top": 254,
+            "width": 130
+        },
+        {
+            "children": [],
+            "height": 96,
+            "left": 399,
+            "top": 254,
+            "width": 130
+        },
+        {
+            "children": [],
+            "height": 96,
+            "left": 502,
+            "top": 254,
+            "width": 130
+        }
+    ],
+    "scale": 0.7848484848484848,
+    "screen": {
+        "children": [],
+        "height": 322,
+        "left": 202,
+        "top": 32,
+        "width": 430
+    }
+}

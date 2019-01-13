@@ -34,19 +34,33 @@ class Segmenter(StreamParser):
     def parse(self):
         vf = Viewfinder(self.filename, polling_interval=self.polling_interval)
 
+        logging.warn("Video OK, looking for screen...")
         self.data["screen"] = vf.detect_screen()
-        self.data["scale"] = vf.scale
-        logger.warn("Screen is at {0}".format(self.data["screen"]))
+        logger.warn("Estimated screen is {screen}".format(**self.data))
 
+        self.data["scale"] = vf.scale
         logger.warn("Estimated scale is {scale}".format(**self.data))
 
+        logging.warn("Checking port locations...")
         self.data["ports"], _, _ = vf.detect_ports()
         if not self.data["ports"]:
             raise RuntimeError("No ports found!")
-
         logger.warn("Ports are at {0} {1} {2} {3}".format(*self.data["ports"]))
 
-        self.data["chunks"] = self.detect_match_chunks()
+        logging.warn("Beginning segmentation...")
+        self.data["matches"] = self.detect_match_chunks()
+
+        for n, match in enumerate(self.data["matches"]):
+            start, end = match
+            logger.warn("Estimated game {0} is {1}-{2} s".format(n + 1, start, end))
+
+        logging.warn("Refining match boundaries...")
+        for n, match in enumerate(self.data["matches"]):
+            start, end = match
+            start = self.find_match_boundary(start)
+            end = self.find_match_boundary(end)
+            self.data["matches"][n] = (start, end)
+            logger.warn("Estimated game {0} is {1}-{2} s".format(n + 1, start, end))
 
     def calculate_frame_confidence(self, scene):
         cv2.imwrite("scene.png", scene)
@@ -76,12 +90,13 @@ class Segmenter(StreamParser):
             conf = self.calculate_frame_confidence(scene)
             point = [t, conf]
 
-            logger.warn("{0}\t{1}".format(*point))
+            logger.info("{0}\t{1}".format(*point))
             conf_series.append(point)
 
         conf_series = pd.DataFrame(conf_series, columns=['time', 'conf'])
         confs = conf_series['conf']
 
+        # Trim outliers for robustness.
         p05, p95 = confs.quantile((0.05, 0.95))
         samples = np.linspace(p05, p95, num=100)
 
@@ -93,12 +108,19 @@ class Segmenter(StreamParser):
         rel_mins = argrelmin(e)[0]
         deepest_min = max(rel_mins, key=lambda idx: min(e[idx - 1] - e[idx],
                                                         e[idx + 1] - e[idx]))
-        split_point = samples[deepest_min]
+        self.threshold = samples[deepest_min]
 
         # How separated are the two groups?
-        mean_positive = np.mean(confs[confs >= split_point])
-        mean_negative = np.mean(confs[confs < split_point])
-        logging.warn("Group means are (+){0} (-){1}".format(mean_positive, mean_negative))
+        mean_positive = np.mean(confs[confs >= self.threshold])
+        mean_negative = np.mean(confs[confs < self.threshold])
+        logger.warn("Group means are (+){0} (-){1}".format(
+                    mean_positive, mean_negative))
+
+        if mean_positive - mean_negative < 0.1:
+            logger.warn("This looks like an edited/gapless set"
+                        "(mean_pos - mean_neg = {:03f})".format(
+                        mean_positive - mean_negative))
+            raise RuntimeError()
 
         # Perform median smoothing.
         conf_series['median'] = conf_series['conf'].rolling(5).median()
@@ -106,15 +128,52 @@ class Segmenter(StreamParser):
         conf_series['median'] = conf_series['median'].fillna(method='ffill')
 
         # Now classify as Melee/no Melee based on whether we are greater/less
-        # than the relmin.
+        # than the threshold.
         groups = itertools.groupby(conf_series.iterrows(),
-                                   lambda row: row[1]['median'] > split_point)
+                                   lambda row: row[1]['median'] > self.threshold)
         groups = [(k, list(g)) for k, g in groups]
         matches = [(self.polling_interval * g[0][0],
                     self.polling_interval * g[-1][0]) for k, g in groups if k]
 
-        for n, match in enumerate(matches):
-            start, end = match
-            logging.warn("Estimated game {0} is {1}-{2} s".format(n, start, end))
-
         return matches
+
+    def find_match_boundary(self, t):
+        # Bisection method.
+        # f(t) = conf_at(t) - self.threshold
+        def conf_at(t):
+            scene = self.get_frame(t)
+            return self.calculate_frame_confidence(scene)
+
+        window = self.min_gap * 1.5
+
+        start = max(0, t - window / 2)
+        end = min(self.length, t + window / 2)
+
+        # First make sure we have an interval to which bisection is applicable.
+        # Also compute start and end confs.
+        plus_to_minus = None
+        minus_to_plus = None
+        while not (plus_to_minus or minus_to_plus):
+            if plus_to_minus is not None:
+                start += 1
+            if minus_to_plus is not None:
+                end -= 1
+
+            if start >= end:
+                return None
+
+            start_conf = conf_at(start)
+            end_conf = conf_at(end)
+
+            plus_to_minus = (start_conf > self.threshold > end_conf)
+            minus_to_plus = (start_conf < self.threshold < end_conf)
+
+        while end - start > 0.1:
+            middle = (start + end) / 2
+            middle_conf = conf_at(middle)
+            if np.sign(middle_conf - self.threshold) == np.sign(start_conf - self.threshold):
+                start = middle
+            else:
+                end = middle
+
+        return (start + end) / 2

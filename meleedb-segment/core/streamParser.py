@@ -59,6 +59,20 @@ class StreamParser:
 
         return (median_best_scale, feature_locations)
 
+    def get_frame(self, time, color=False):
+        self.vc.set(0, int(time * 1000))
+        success, frame = self.vc.read()
+
+        if success:
+            cv2.imwrite('scene.png', frame)
+            frame = cv2.imread('scene.png', cv2.IMREAD_COLOR)
+
+            logger.info('%d\n', time)
+            if color:
+                return frame
+            else:
+                return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
     def sample_frames(self, start=None, end=None, interval=None,
                       num_samples=None, fuzz=0, color=False):
         if (interval is None and num_samples is None) or \
@@ -68,11 +82,15 @@ class StreamParser:
 
         # TODO Make sure the VC object actually works so we don't divide by
         # zero here
-        video_length = self.vc.get(7) / self.vc.get(5)
+        try:
+            self.length = self.vc.get(7) / self.vc.get(5)
+        except ZeroDivisionError:
+            raise RuntimeError('Video file could not be read from!')
+        
         if not start or start < 0:
             start = 0
-        if not end or end > video_length:
-            end = video_length
+        if not end or end > self.length:
+            end = self.length
 
         total_time = end - start
 
@@ -87,16 +105,7 @@ class StreamParser:
             elif time > end:
                 time = end
 
-            self.vc.set(0, int(time * 1000))
-            success, frame = self.vc.read()
-
-            if success:
-                cv2.imwrite('scene.png', frame)
-                frame = cv2.imread('scene.png', cv2.IMREAD_COLOR)
-
-                logger.info('%d\n', time)
-                if color:
-                    yield (time, frame)
-                else:
-                    yield (time, cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+            frame = self.get_frame(time, color=color)
+            if frame is not None:
+                yield (time, frame)
         return

@@ -79,20 +79,26 @@ class Viewfinder(StreamParser):
         skew_kurt = self.overlay_map() // 255
 
         t = max(0, top)
-        goodnesses = [sum(sum(skew_kurt[t:t + height, left:left + width]))
-                      for left in range(skew_kurt.shape[1] - width)]
-        goodnesses = np.array(goodnesses)
-
-        left = np.argmin(goodnesses)
+        possible_lefts = range(skew_kurt.shape[1] - width)
+        if not possible_lefts:
+            logger.warn("Estimated screen is bigger than the video, assuming left = 0...")
+            left = 0
+        else:
+            # TODO clean this up
+            goodnesses = [sum(sum(skew_kurt[t:t + height, left:left + width]))
+                          for left in possible_lefts]
+            goodnesses = np.array(goodnesses)
+            
+            left = np.argmin(goodnesses)
         
-        print(top, left, height, width)
-
         self.screen = Rect(top, left, height, width) & self.shape
         ports, predicted, locations = self.detect_ports()
 
         if not predicted or not locations:
             raise RuntimeError('This doesn\'t appear to be Melee (no percent signs found!)')
 
+        # Determine the direct linear transformation that moves the percent signs
+        # to where they should be using OLS.
         hommat = []
         for p in predicted:
             hommat.append([p[0], 1, 0])
@@ -105,6 +111,7 @@ class Viewfinder(StreamParser):
 
         ols, _, _, _ = np.linalg.lstsq(hommat, respmat, rcond=None)
 
+        # Scaling factor, translation y, translation x
         s, ty, tx = ols
         self.scale *= s
         height *= s
