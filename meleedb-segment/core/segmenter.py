@@ -116,7 +116,7 @@ class Segmenter(StreamParser):
         logger.warn("Group means are (+){0} (-){1}".format(
                     mean_positive, mean_negative))
 
-        if mean_positive - mean_negative < 0.1:
+        if mean_positive - mean_negative < 0.1 or mean_negative > 0.5:
             logger.warn("This looks like an edited/gapless set"
                         "(mean_pos - mean_neg = {:03f})".format(
                         mean_positive - mean_negative))

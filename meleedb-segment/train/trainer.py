@@ -4,10 +4,14 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QComboBox, Q
 import cv2
 
 import logging
-from streamParser import StreamParser
-from segmenter import Segmenter
-from entities import Characters  # PortState
 from collections import namedtuple
+
+import sys
+sys.path.append('..')
+
+from core.streamParser import StreamParser
+from core.segmenter import Segmenter
+from core.entities import Characters  # PortState
 
 PortState = namedtuple("PortState", "char, stocks, pct")
 
@@ -32,7 +36,6 @@ class TrainerDialog(QMainWindow):
         layout = QVBoxLayout(widget)
 
         # TODO DRY this out somehow
-
         self.charas = QComboBox()
         self.charas.addItems(char.name for char in Characters)
 
