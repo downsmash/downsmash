@@ -1,0 +1,38 @@
+{
+    "matches": [
+        [
+            4.345703125,
+            242.197265625
+        ],
+        [
+            251.224609375,
+            466.388671875
+        ]
+    ],
+    "ports": [
+        {
+            "children": [],
+            "height": 98,
+            "left": 198,
+            "top": 252,
+            "width": 121
+        },
+        null,
+        null,
+        {
+            "children": [],
+            "height": 98,
+            "left": 503,
+            "top": 252,
+            "width": 132
+        }
+    ],
+    "scale": 0.7979797979797976,
+    "screen": {
+        "children": [],
+        "height": 328,
+        "left": 198,
+        "top": 26,
+        "width": 437
+    }
+}
