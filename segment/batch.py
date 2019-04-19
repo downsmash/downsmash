@@ -7,10 +7,10 @@ import youtube_dl
 
 import segment
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
-def __main__(args):
+def __main__():
     batch_dir = os.path.dirname("batch/")
     cachefile = os.path.join(batch_dir, "cache")
 
@@ -32,19 +32,19 @@ def __main__(args):
                                           "../data/{0}.json".format(video)])
                     except youtube_dl.utils.DownloadError:
                         # Video predates 480p
-                        logger.error("Segmentation failed!")
+                        LOGGER.error("Segmentation failed!")
                         err = ("The parser does not currently support videos "
                                "in resolution lower than 480p.")
-                        logger.error("Guru meditation: " + err)
+                        LOGGER.error("Guru meditation: %s", err)
                         continue
-                    except RuntimeError as e:
+                    except RuntimeError as err:
                         # Parser had a problem somewhere
-                        logger.error("Segmentation failed!")
-                        logger.error("Guru meditation: " + str(e))
-                        pass
+                        LOGGER.error("Segmentation failed!")
+                        LOGGER.error("Guru meditation: %s", str(err))
 
                 cache.write("{0}\n".format(video))
 
 
 if __name__ == "__main__":
-    __main__(sys.argv[1:])
+    # __main__(sys.argv[1:])
+    __main__()

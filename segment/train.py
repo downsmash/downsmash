@@ -1,5 +1,6 @@
-from train.trainer import Trainer
 import argparse
+
+from train.trainer import Trainer
 
 
 def __main__():
@@ -9,9 +10,9 @@ def __main__():
 
     args = parser.parse_args()
 
-    tr = Trainer(args.infile, args.slippi)
+    trainer = Trainer(args.infile, args.slippi)
 
-    tr.train()
+    trainer.train()
 
 
 if __name__ == "__main__":

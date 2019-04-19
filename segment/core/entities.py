@@ -1,8 +1,9 @@
+import enum
+from glob import glob
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import *
 from sqlalchemy.orm import relationship
-import enum
-from glob import glob
 
 Base = declarative_base()
 

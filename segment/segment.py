@@ -4,12 +4,9 @@ import logging
 from json import dump
 import sys
 
-import cv2
-
 from core.segmenter import Segmenter
-from core.viewfinder import Viewfinder
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 def __main__(args):
     parser = argparse.ArgumentParser(description="",
@@ -34,28 +31,26 @@ def __main__(args):
     elif args.output and not args.stdout:
         output = os.path.realpath(args.output)
     else:
-        raise ArgumentError("exactly one of --output [file] "
+        raise ArgumentError("exactly one of --output [file] "  # pylint:disable=undefined-variable
                             "or --stdout is required")
-    
+
     filename = os.path.basename(stream)
     filename, _ = os.path.splitext(filename)
 
     match = Segmenter(stream)
     match.parse()
 
-    logging.warn("Segmentation succeeded!")
+    LOGGER.warning("Segmentation succeeded!")
+    data = vars(match)
     if args.stdout:
-        logger.warn("Writing data to <stdout>...")
-        dump(match.data, sys.stdout, default=lambda obj: obj.__dict__,
-             indent=4, sort_keys=True)
+        LOGGER.warning("Writing data to <stdout>...")
+        dump(data, sys.stdout, default=repr, indent=4, sort_keys=True)
         print()
     else:
-        with open(output, "w") as f:
-            logger.warn("Writing data to {0}...".format(f.name))
-            dump(match.data, f, default=lambda obj: obj.__dict__,
-                 indent=4, sort_keys=True)
+        with open(output, "w") as outfile:
+            LOGGER.warning("Writing data to %s...", outfile.name)
+            dump(data, outfile, default=repr, indent=4, sort_keys=True)
 
 
 if __name__ == "__main__":
-    import sys
     __main__(sys.argv[1:])
