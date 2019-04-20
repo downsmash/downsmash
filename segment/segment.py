@@ -37,8 +37,8 @@ def __main__(args):
     filename = os.path.basename(stream)
     filename, _ = os.path.splitext(filename)
 
-    match = Segmenter(stream)
-    match.parse()
+    segmenter = Segmenter(stream)
+    matchdata = segmenter.parse()
 
     LOGGER.warning("Segmentation succeeded!")
     data = vars(match)
