@@ -111,7 +111,7 @@ class Viewfinder(StreamParser):
         screen.top *= scale_factor
         screen.top += shift_y
 
-        return (scale, screen & self.shape)
+        return (scale, screen)
 
     def detect_screen(self):
         """Attempt to detect the screen.
@@ -140,7 +140,7 @@ class Viewfinder(StreamParser):
 
             left = np.argmin(goodnesses)
 
-        return (scale, Rect(top, left, height, width) & self.shape)
+        return (scale, Rect(top, left, height, width))
 
     @staticmethod
     def _scale_to_interval(array, new_min, new_max):
@@ -200,21 +200,14 @@ class Viewfinder(StreamParser):
         locations = []
         # TODO DRY this out
         for port_number in range(4):
-            pct_roi = screen.subregion(PERCENT_Y_POS,
-                                       PERCENT_X_POS + port_number * PERCENT_X_POS_STEP,
-                                       PERCENT_HEIGHT,
-                                       )
+            pct_roi = screen.subregion(PERCENT_Y_POS / SCREEN_HEIGHT,
+                                       (PERCENT_X_POS + port_number * PERCENT_X_POS_STEP) / SCREEN_WIDTH,
+                                       PERCENT_HEIGHT / SCREEN_HEIGHT,
+                                       PERCENT_WIDTH / SCREEN_WIDTH,
+                                       padding=max_error)
+
             pct_left = screen.left + (PERCENT_X_POS + port_number * PERCENT_X_POS_STEP) * scale
             pct_top = screen.top + PERCENT_Y_POS * scale
-
-            pct_roi_top = pct_top - max_error * screen.height
-            pct_roi_left = pct_left - max_error * screen.width
-            pct_roi_height = PERCENT_HEIGHT * scale + 2 * max_error * screen.height
-            pct_roi_width = PERCENT_WIDTH * scale + 2 * max_error * screen.width
-            pct_roi = Rect(pct_roi_top, pct_roi_left,
-                           pct_roi_height, pct_roi_width)
-
-            pct_roi &= screen
 
             matcher = TemplateMatcher(scales=[scale], worst_match=0.6, debug=False)
             portscale, location = self.locate(PERCENT, num_samples=10, matcher=matcher, roi=pct_roi)
@@ -223,25 +216,19 @@ class Viewfinder(StreamParser):
                 ports.append(None)
                 continue
 
-            # Actual minus predicted
-            error = location[0] - (pct_top, pct_left)
-            LOGGER.warning("Detected port %d at (%d, %d) (error %d px, %d px)",
-                           port_number + 1, location[0][0], location[0][1], error[0], error[1])
+            LOGGER.warning("Detected port %d at (%d, %d) (error %.03f px, %.03f px)",
+                           port_number + 1, location[0][0], location[0][1],
+                           location[0][0] - pct_top, location[0][1] - pct_left)
 
             predicted.append([pct_top, pct_left])
             locations.append(location[0])
 
-            port_left = screen.left + (PORT_X_POS + port_number * PORT_X_POS_STEP) * portscale
-            port_top = screen.top + PORT_Y_POS * portscale
+            port_roi = screen.subregion(PORT_Y_POS / SCREEN_HEIGHT,
+                                        (PORT_X_POS + port_number * PORT_X_POS_STEP) / SCREEN_WIDTH,
+                                        PORT_HEIGHT / SCREEN_HEIGHT,
+                                        PORT_WIDTH / SCREEN_WIDTH,
+                                        padding=max_error)
 
-            port_roi_top = port_top - max_error * screen.height
-            port_roi_left = port_left - max_error * screen.width
-            port_roi_height = PORT_HEIGHT * portscale + 2 * max_error * screen.height
-            port_roi_width = PORT_WIDTH * portscale + 2 * max_error * screen.width
-            port_roi = Rect(port_roi_top, port_roi_left,
-                            port_roi_height, port_roi_width)
-
-            port_roi &= screen
             ports.append(port_roi)
 
         return (ports, predicted, locations)
