@@ -2,6 +2,7 @@
 
 import logging
 import itertools
+from dataclasses import dataclass
 
 import numpy as np
 import cv2
@@ -22,34 +23,17 @@ PERCENT = cv2.imdecode(NPARR, 1)
 LOGGER = logging.getLogger(__name__)
 
 
-class SegmentedMatch():
-    def __init__(self, screen=None, scale=None, ports=None, matches=None, threshold=None):
-        self.screen = screen
-        self.scale = scale
-        self.ports = ports
-        self.matches = matches
-        self.threshold = threshold
-
-def compute_minimum_kernel_density(confs):
+@dataclass
+class MatchData:
+    """Wrapper class for parsed match data.
     """
-    """
-    # Trim outliers for robustness.
-    p05, p95 = confs.quantile((0.05, 0.95))
-    samples = np.linspace(p05, p95, num=100)
+    screen: Rect
+    scale: float
+    ports: list
+    matches: list
+    threshold: float
 
-    # Find the minimum kernel density.
-    kde = KernelDensity(kernel='gaussian', bandwidth=.005)
-    kde = kde.fit(np.array(confs).reshape(-1, 1))
-    estimates = kde.score_samples(samples.reshape(-1, 1))
-
-    rel_mins = argrelmin(estimates)[0]
-    def depth(idx):
-        return min(estimates[idx - 1] - estimates[idx],
-                   estimates[idx + 1] - estimates[idx])
-    deepest_min = max(rel_mins, key=depth)
-    return samples[deepest_min]
-
-class Segmenter(StreamParser):
+class MatchDataBuilder(StreamParser):
 
     def __init__(self, filename, polling_interval=2, min_gap=10):
         StreamParser.__init__(self, filename)
@@ -58,11 +42,14 @@ class Segmenter(StreamParser):
         self.polling_interval = polling_interval
         self.min_gap = min_gap
 
-        self.match = SegmentedMatch()
+        # Computed during segmentation
+        self.threshold = None
 
     def parse(self):
-        """asdfasdf
         """
+        """
+        match = MatchData()
+
         view = Viewfinder(self.filename, polling_interval=self.polling_interval)
 
         LOGGER.warning("Video OK, looking for screen...")
@@ -78,8 +65,8 @@ class Segmenter(StreamParser):
 
         # TODO There needs to be some kind of robustness check on these to
         # make sure no ill-conditioning weirdness happens with OLS.
-        self.match.scale = scale
-        self.match.screen = screen
+        match.scale = scale
+        match.screen = screen
 
         LOGGER.warning("Checking port locations...")
         ports, _, _ = view.detect_ports(scale, screen)
@@ -87,42 +74,45 @@ class Segmenter(StreamParser):
             raise RuntimeError("No ports found!")
         LOGGER.warning("Ports are at %s", " ".join(str(s) for s in ports))
 
-        self.match.ports = ports
+        match.ports = ports
 
         LOGGER.warning("Beginning segmentation...")
-        matches = self.segment()
+        segments = self.segment(match)
 
         def timeify(time):
             time = float(time)
             mins, secs = time // 60, time % 60
             return "{:.0f}:{:05.2f}".format(mins, secs)
 
-        for idx, match in enumerate(matches):
-            start, end = match
+        for idx, segment in enumerate(segments):
+            start, end = segment
             LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
 
-        LOGGER.warning("Refining match boundaries...")
-        for idx, match in enumerate(matches):
+        LOGGER.warning("Refining segment boundaries...")
+        for idx, segment in enumerate(segments):
             start, end = match
-            start = self.find_match_boundary(start)
-            end = self.find_match_boundary(end)
-            matches[idx] = (start, end)
+            start = self.find_segment_boundary(segment, start)
+            end = self.find_segment_boundary(segment, end)
+            segments[idx] = (start, end)
             LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
 
-        self.match.matches = matches
+        match.segments = matches
 
-    def calculate_frame_confidence(self, scene):
+        return match
+
+    @staticmethod
+    def calculate_frame_confidence(match, scene):
         """Estimate the maximum correlation of any percent ROI in __scene__
         to the PERCENT image.
         """
         cv2.imwrite("scene.png", scene)
         scene = cv2.imread("scene.png")
 
-        scaled_percent = cv2.resize(PERCENT, (0, 0), fx=self.match.scale, fy=self.match.scale)
+        scaled_percent = cv2.resize(PERCENT, (0, 0), fx=match.scale, fy=match.scale)
         scaled_percent = cv2.Laplacian(scaled_percent, cv2.CV_8U)
 
         percent_corrs = []
-        for roi in self.match.ports:
+        for roi in match.ports:
             if roi is not None:
                 scene_roi = scene[roi.top:(roi.top + roi.height), roi.left:(roi.left + roi.width)]
                 scene_roi = cv2.Laplacian(scene_roi, cv2.CV_8U)
@@ -132,14 +122,35 @@ class Segmenter(StreamParser):
                 percent_corrs.append(max_corr)
         return max(percent_corrs)
 
-    def segment(self):
+    @staticmethod
+    def compute_minimum_kernel_density(series):
+        """Estimate the value within the range of _series_ that is the furthest
+        away from most observations.
+        """
+        # Trim outliers for robustness.
+        p05, p95 = series.quantile((0.05, 0.95))
+        samples = np.linspace(p05, p95, num=100)
+
+        # Find the minimum kernel density.
+        kde = KernelDensity(kernel='gaussian', bandwidth=.005)
+        kde = kde.fit(np.array(series).reshape(-1, 1))
+        estimates = kde.score_samples(samples.reshape(-1, 1))
+
+        rel_mins = argrelmin(estimates)[0]
+        def depth(idx):
+            return min(estimates[idx - 1] - estimates[idx],
+                       estimates[idx + 1] - estimates[idx])
+        deepest_min = max(rel_mins, key=depth)
+        return samples[deepest_min]
+
+    def segment(self, match):
         """Return the approximate match start and end times for
         the given video.
         """
         conf_series = []
 
         for (time, scene) in self.sample_frames(interval=self.polling_interval):
-            conf = self.calculate_frame_confidence(scene)
+            conf = self.calculate_frame_confidence(match, scene)
 
             LOGGER.info("%d\t%f", time, conf)
             conf_series.append([time, conf])
@@ -147,11 +158,11 @@ class Segmenter(StreamParser):
         conf_series = pd.DataFrame(conf_series, columns=['time', 'conf'])
         confs = conf_series['conf']
 
-        self.match.threshold = compute_minimum_kernel_density(confs)
+        match.threshold = self.compute_minimum_kernel_density(confs)
 
         # How separated are the two groups?
-        mean_positive = np.mean(confs[confs >= self.match.threshold])
-        mean_negative = np.mean(confs[confs < self.match.threshold])
+        mean_positive = np.mean(confs[confs >= match.threshold])
+        mean_negative = np.mean(confs[confs < match.threshold])
         LOGGER.warning("Group means are (+)%.03f (-)%.03f", mean_positive, mean_negative)
 
         # TODO Replace magic numbers
@@ -170,27 +181,27 @@ class Segmenter(StreamParser):
         # Now classify as Melee/no Melee based on whether we are greater/less
         # than the threshold.
         groups = itertools.groupby(conf_series.iterrows(),
-                                   lambda row: row[1]['median'] > self.match.threshold)
+                                   lambda row: row[1]['median'] > match.threshold)
         groups = [(k, list(g)) for k, g in groups]
-        matches = [(self.polling_interval * g[0][0],
-                    self.polling_interval * g[-1][0]) for k, g in groups if k]
+        segments = [(self.polling_interval * g[0][0],
+                     self.polling_interval * g[-1][0]) for k, g in groups if k]
 
-        return matches
+        return segments
 
-    def find_match_boundary(self, time):
-        """Find a match boundary near _time_.
+    def find_segment_boundary(self, match, time, tolerance=0.1):
+        """Find the time index of a match segment boundary (start or end)
+        near _time_, accurate to within _tolerance_ seconds.
         Uses the bisection method to find an approximate solution for
         f(t) = conf_at(t) - self.threshold = 0.
         """
         def conf_at(time):
             scene = self.get_frame(time)
             if scene is not None:
-                return self.calculate_frame_confidence(scene)
+                return self.calculate_frame_confidence(match, scene)
             return None
 
-        # TODO Magic numbers
+        # TODO Magic number
         window = self.min_gap * 1.5
-        tolerance = 0.1
 
         start = max(0, time - window / 2)
         # Have to read from strictly before the end of the video.
@@ -214,14 +225,14 @@ class Segmenter(StreamParser):
             start_conf = conf_at(start)
             end_conf = conf_at(end)
 
-            plus_to_minus = (start_conf > self.match.threshold > end_conf)
-            minus_to_plus = (start_conf < self.match.threshold < end_conf)
+            plus_to_minus = (start_conf > match.threshold > end_conf)
+            minus_to_plus = (start_conf < match.threshold < end_conf)
 
         while end - start > tolerance:
             middle = (start + end) / 2
             middle_conf = conf_at(middle)
-            if (np.sign(middle_conf - self.match.threshold) ==
-                    np.sign(start_conf - self.match.threshold)):
+            if (match.threshold > middle_conf and match.threshold > start_conf
+                    or match.threshold < middle_conf and match.threshold < start_conf):
                 start = middle
             else:
                 end = middle
