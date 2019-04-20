@@ -30,7 +30,7 @@ class MatchData:
     screen: Rect
     scale: float
     ports: list
-    matches: list
+    segments: list
     threshold: float
 
 class MatchDataBuilder(StreamParser):
@@ -90,13 +90,13 @@ class MatchDataBuilder(StreamParser):
 
         LOGGER.warning("Refining segment boundaries...")
         for idx, segment in enumerate(segments):
-            start, end = match
+            start, end = segments
             start = self.find_segment_boundary(segment, start)
             end = self.find_segment_boundary(segment, end)
             segments[idx] = (start, end)
             LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
 
-        match.segments = matches
+        match.segments = segments
 
         return match
 
