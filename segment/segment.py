@@ -37,11 +37,10 @@ def __main__(args):
     filename = os.path.basename(stream)
     filename, _ = os.path.splitext(filename)
 
-    segmenter = Segmenter(stream)
-    matchdata = segmenter.parse()
+    matchdata = Segmenter(stream).parse()
 
     LOGGER.warning("Segmentation succeeded!")
-    data = vars(match)
+    data = vars(matchdata)
     if args.stdout:
         LOGGER.warning("Writing data to <stdout>...")
         dump(data, sys.stdout, default=repr, indent=4, sort_keys=True)
