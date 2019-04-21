@@ -100,7 +100,6 @@ class Viewfinder(StreamParser):
 
         ols, resid, _, _ = np.linalg.lstsq(predicted_mat, actual_vec, rcond=None)
 
-        print(predicted_mat, actual_vec, ols, actual_vec - np.dot(predicted_mat, ols))
         # Scaling factor, translation x, translation y
         scale_factor, shift_x, shift_y = ols
         scale *= scale_factor
@@ -229,6 +228,8 @@ class Viewfinder(StreamParser):
                                         PORT_WIDTH / SCREEN_WIDTH,
                                         padding=max_error)
 
+            port_roi.left = max(port_roi.left, 0)
+            port_roi.top = max(port_roi.top, 0)
             ports.append(port_roi)
 
         return (ports, predicted, locations)
