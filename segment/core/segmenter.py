@@ -151,7 +151,6 @@ class MatchDataBuilder(StreamParser):
         """Return the approximate match start and end times for
         the given video.
         """
-        # TODO Threshold stuff can be its own method?
         conf_series = []
 
         for (time, scene) in self.sample_frames(interval=self.polling_interval):
