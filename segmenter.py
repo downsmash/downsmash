@@ -164,6 +164,7 @@ class MatchDataBuilder(StreamParser):
 
         threshold = self.compute_minimum_kernel_density(confs)
         self.match.threshold = threshold
+        LOGGER.warning("Threshold is %.03f", threshold)
 
         # How separated are the two groups?
         mean_positive = np.mean(confs[confs >= threshold])
