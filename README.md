@@ -1,6 +1,8 @@
-# meleedb-segment
+# downsmash/segment
 
-meleedb-segment watches a video of a Melee set and outputs the (approximate) start and end times of contiguous Melee.
+Part of the [Downsmash](downsma.sh) project.
+
+Watch a video of a Melee set and output the (approximate) start and end times of contiguous Melee.
 
 ## Synopsis
 Segment an individual VOD:
@@ -15,4 +17,4 @@ $ sort -R batch/videos_melee.tsv | head -n10 | cut -f1 | python batch.py
 ```
 
 ## If you'd like to help
-Good things come to those who wait.
+I'm still working on getting this to a point where others can maintain it. Some of the code is still a mess.
