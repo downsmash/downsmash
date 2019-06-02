@@ -1,5 +1,10 @@
 import unittest
 
-class TestSegmentation(unittest.TestCase):
-    def test_segmenter_works():
-        pass
+loader = unittest.TestLoader()
+suite = unittest.TestSuite()
+
+suite.addTests(loader.loadTestsFromModule())
+
+if __name__ == '__main__':
+    runner = unittest.TextTestRunner()
+    runner.run(suite)

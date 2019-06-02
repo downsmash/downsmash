@@ -23,6 +23,8 @@ PERCENT = cv2.imdecode(NPARR, 1)
 LOGGER = logging.getLogger(__name__)
 
 def timeify(time):
+    """Format a time in seconds as minutes:seconds.
+    """
     time = float(time)
     mins, secs = time // 60, time % 60
     return "{:.0f}:{:05.2f}".format(mins, secs)
@@ -45,7 +47,7 @@ class Segmenter:
         self.polling_interval = polling_interval
 
     def parse(self):
-        """
+        """Build metadata.
         """
         builder = MatchDataBuilder(self.filename, polling_interval=self.polling_interval)
 
@@ -64,7 +66,9 @@ class Segmenter:
         return builder.match
 
 class MatchDataBuilder(StreamParser):
-
+    """Given a video file, a MatchDataBuilder attempts to construct an
+    instance of MatchData (basic match metadata.)
+    """
     def __init__(self, filename, polling_interval=2, min_gap=10):
         StreamParser.__init__(self, filename)
 
@@ -78,7 +82,9 @@ class MatchDataBuilder(StreamParser):
         self.match = MatchData()
 
     def get_screen(self):
-        """
+        """Attempt to detect and refine the game screen.
+
+        This can be abstracted.
         """
         scale, screen = self.view.detect_screen()
         LOGGER.warning("Estimated screen is %s", screen)
@@ -97,6 +103,10 @@ class MatchDataBuilder(StreamParser):
         return self
 
     def get_ports(self):
+        """Attempt to detect the screen's ports.
+
+        This can be abstracted.
+        """
         ports, _, _ = self.view.detect_ports(self.match.scale, self.match.screen)
         if not ports:
             raise RuntimeError("No ports found!")
@@ -169,7 +179,8 @@ class MatchDataBuilder(StreamParser):
         # How separated are the two groups?
         mean_positive = np.mean(confs[confs >= threshold])
         mean_negative = np.mean(confs[confs < threshold])
-        LOGGER.warning("Group means are (+)%.03f (-)%.03f", mean_positive, mean_negative)
+        LOGGER.warning("Group means are (+)%.03f (-)%.03f",
+                       mean_positive, mean_negative)
 
         # TODO Replace magic numbers
         # TODO This error message needs to be more descriptive - something about
@@ -177,7 +188,8 @@ class MatchDataBuilder(StreamParser):
         # TODO Pull this out and handle it one level up
         if mean_positive - mean_negative < 0.1 or mean_negative > 0.5:
             LOGGER.warning("This looks like an edited/gapless set"
-                           "(mean_pos - mean_neg = %.03f)", mean_positive - mean_negative)
+                           "(mean_pos - mean_neg = %.03f)",
+                           mean_positive - mean_negative)
             raise RuntimeError()
 
         # Perform median smoothing.
@@ -195,19 +207,24 @@ class MatchDataBuilder(StreamParser):
 
         for idx, segment in enumerate(segments):
             start, end = segment
-            LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
+            LOGGER.warning("Estimated game %d is %s-%s",
+                           idx + 1, timeify(start), timeify(end))
 
         self.match.segments = segments
 
         return self
 
     def refine_segments(self):
+        """Replace first-approximation segment boundaries with better ones
+        obtained from find_segment_boundary.
+        """
         for idx, segment in enumerate(self.match.segments):
             start, end = segment
             start = self.find_segment_boundary(start)
             end = self.find_segment_boundary(end)
             self.match.segments[idx] = (start, end)
-            LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
+            LOGGER.warning("Estimated game %d is %s-%s",
+                           idx + 1, timeify(start), timeify(end))
 
         return self
 
