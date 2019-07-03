@@ -7,10 +7,12 @@ import logging
 import cv2
 import numpy as np
 
+import cluster
 from .rect import Rect
 from .template_matcher import TemplateMatcher
 
 LOGGER = logging.getLogger(__name__)
+
 
 class StreamParser:
     """This class is effectively a wrapper around OpenCV's VideoCapture class
@@ -65,9 +67,8 @@ class StreamParser:
 
                 peaks.extend(these_peaks)
 
-        clusters = matcher._get_clusters(peaks, max_clusters=max_clusters)
+        clusters = cluster.get_clusters(peaks, max_clusters=max_clusters)
 
-        # TODO Where to put clustering?
         feature_locations = [np.array(max(set(cluster), key=cluster.count))
                              for cluster in clusters]
         feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
@@ -110,10 +111,6 @@ class StreamParser:
 
             yield time
 
-
-    # TODO This method is a mess. Figure out what needs to be factored out.
-    # Probably replace it with a loop that calls get_frame and rename it;
-    # what it's really doing is computing timestamps.
     def sample_frames(self, start=None, end=None, interval=None,
                       num_samples=None, fuzz=0, color=False):
         """Generate frames based on the parameters given.

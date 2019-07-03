@@ -6,7 +6,7 @@ import logging
 
 import numpy as np
 import cv2
-from sklearn.cluster import DBSCAN
+import cluster
 
 LOGGER = logging.getLogger(__name__)
 
@@ -72,35 +72,15 @@ class TemplateMatcher:
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
-            clusters = self._get_clusters(good_points)
+            clusters = cluster.get_clusters(good_points,
+                                            max_distance=self.max_distance)
 
             match_candidates = [max(clust, key=lambda pt: peak_map[pt])
                                 for clust in clusters]
             match_candidates = [(peak, peak_map[peak])
                                 for peak in match_candidates]
 
-        return (scale, peaks)
-
-    def _get_clusters(self, pts, key=lambda x: x, max_clusters=None):
-        """Run DBSCAN on the `pts`, applying `key` first if necessary,
-        post-process the results into a list of lists, and return it,
-        taking only the largest `max_clusters`.
-        """
-        if pts:
-            kpts = [key(pt) for pt in pts]
-
-            clustering = DBSCAN(eps=self.max_distance, min_samples=1).fit(kpts)
-
-            # Post-processing.
-            labeled_pts = list(zip(kpts, clustering.labels_))
-            labeled_pts = sorted(labeled_pts, key=lambda p: p[1])
-
-            clusters = [list(g) for l, g in groupby(labeled_pts, key=lambda p: p[1])]
-            clusters = [[p[0] for p in clust] for clust in clusters]
-            clusters = list(sorted(clusters, key=len, reverse=True))
-
-            return clusters[:max_clusters]
-        return []
+        return (scale, match_candidates)
 
     def find_best_scale(self, feature, scene):
         """Find the scale with the best correlation.
