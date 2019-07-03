@@ -1,4 +1,5 @@
-#!/usr/bin/python
+"""Module for StreamParser class.
+"""
 
 from random import randint
 import logging
@@ -12,13 +13,17 @@ from .template_matcher import TemplateMatcher
 LOGGER = logging.getLogger(__name__)
 
 class StreamParser:
+    """This class is effectively a wrapper around OpenCV's VideoCapture class
+    that provides utility functions for parsing video streams.
+    """
 
     def __init__(self, filename, debug=False):
         self.filename = filename
         cap = cv2.VideoCapture(filename)
 
         if not cap.isOpened():
-            raise RuntimeError('File "{0}" could not be read from.'.format(filename))
+            raise RuntimeError('File "{0}" could not be read from.'
+                               .format(filename))
 
         self.cap = cap
         try:
@@ -29,7 +34,8 @@ class StreamParser:
         self.shape = Rect(0, 0, self.cap.get(4), self.cap.get(3))
         self.debug = debug
 
-    def locate(self, feature, roi=None, matcher=TemplateMatcher(), num_samples=10):
+    def locate(self, feature, roi=None, matcher=TemplateMatcher(),
+               num_samples=10):
         """asdfkjasdlfjas
         """
         peaks = []
@@ -54,7 +60,8 @@ class StreamParser:
                 these_peaks = sorted(these_peaks, key=lambda pt: pt[1])
                 these_peaks = [loc for loc, corr in these_peaks]
                 if self.debug:
-                    LOGGER.warning("%s", "\t".join(str(k) for k in these_peaks))
+                    LOGGER.warning("%s",
+                                   "\t".join(str(k) for k in these_peaks))
 
                 peaks.extend(these_peaks)
 
@@ -73,8 +80,8 @@ class StreamParser:
         return (median_best_scale, feature_locations)
 
     def get_frame(self, time, color=False):
-        """Retrieve the frame from _self.stream_ nearest  to the
-        timestamp _time_, which is measured in seconds.
+        """Retrieve the frame from `self.stream` nearest to the timestamp
+        `time`, measured in seconds.
         """
         self.cap.set(0, int(time * 1000))
         success, frame = self.cap.read()
@@ -89,6 +96,21 @@ class StreamParser:
             return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         return None
 
+    def sample_frame_timestamps(self, start, end, num_samples, fuzz):
+        """
+        """
+        framerate = self.cap.get(5)
+        for time in np.linspace(start, end, num=num_samples):
+            time += randint(-1 * fuzz, fuzz) / framerate
+
+            if time < start:
+                time = start
+            elif time > end:
+                time = end
+
+            yield time
+
+
     # TODO This method is a mess. Figure out what needs to be factored out.
     # Probably replace it with a loop that calls get_frame and rename it;
     # what it's really doing is computing timestamps.
@@ -101,24 +123,17 @@ class StreamParser:
             raise ValueError('exactly one of (interval, num_samples) '
                              'must be set')
 
-        if not start or start < 0:
+        if start is None or start < 0:
             start = 0
-        if not end or end > self.length:
+        if end is None or end > self.length:
             end = self.length
 
         total_time = end - start
 
-        if not num_samples:
+        if num_samples is None:
             num_samples = total_time // interval
 
-        for time in np.linspace(start, end, num=num_samples):
-            time += randint(-1 * fuzz, fuzz) / self.cap.get(5)
-
-            if time < start:
-                time = start
-            elif time > end:
-                time = end
-
+        for time in self.sample_frame_timestamps(start, end, num_samples, fuzz):
             frame = self.get_frame(time, color=color)
             if frame is not None:
                 yield (time, frame)

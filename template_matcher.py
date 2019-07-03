@@ -1,4 +1,5 @@
-#!/usr/bin/python
+"""
+"""
 
 from itertools import groupby
 import logging
@@ -9,9 +10,12 @@ from sklearn.cluster import DBSCAN
 
 LOGGER = logging.getLogger(__name__)
 
-class TemplateMatcher:
 
-    def __init__(self, scales=np.arange(0.5, 1.0, 0.03), #pylint:disable=too-many-arguments
+class TemplateMatcher:
+    """This class performs template matching on a StreamParser.
+    """
+
+    def __init__(self, scales=np.arange(0.5, 1.0, 0.03),
                  max_distance=14,
                  criterion=cv2.TM_CCOEFF_NORMED,
                  worst_match=0.75,
@@ -25,19 +29,29 @@ class TemplateMatcher:
 
     def match(self, feature, scene, mask=None, scale=None):
         """Find the location of _feature_ in _scene_, if there is one.
-        TODO: document kwargs
+
+        Return a tuple containing the match's scale 
+
+        Parameters:
+            `feature`: A (small) image to be matched in _scene_.
+            `scene`: A (large) image, usually raw data.
+            `mask`: A subregion to narrow the search to.
+            `scale`: A scaling factor to use for `feature.`
+                     If None, will search for the best scaling factor
+                     (by `self.criterion`) from `self.scales`.
         """
         if mask is not None:
             scene *= mask
 
         if scale is None:
             scale = self.find_best_scale(feature, scene)
-        peaks = []
+
+        match_candidates = []
 
         if scale:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
-            # Threshold for peaks.
+            # Peaks in matchTemplate are good candidates.
             peak_map = cv2.matchTemplate(scene, scaled_feature,
                                          self.criterion)
 
@@ -60,22 +74,24 @@ class TemplateMatcher:
 
             clusters = self._get_clusters(good_points)
 
-            peaks = [max(clust, key=lambda pt: peak_map[pt])
-                     for clust in clusters]
-            peaks = [(peak, peak_map[peak]) for peak in peaks]
+            match_candidates = [max(clust, key=lambda pt: peak_map[pt])
+                                for clust in clusters]
+            match_candidates = [(peak, peak_map[peak])
+                                for peak in match_candidates]
 
         return (scale, peaks)
 
-
     def _get_clusters(self, pts, key=lambda x: x, max_clusters=None):
-        """DBSCAN
-        TODO: remember what's going on here
+        """Run DBSCAN on the `pts`, applying `key` first if necessary,
+        post-process the results into a list of lists, and return it,
+        taking only the largest `max_clusters`.
         """
         if pts:
             kpts = [key(pt) for pt in pts]
 
             clustering = DBSCAN(eps=self.max_distance, min_samples=1).fit(kpts)
 
+            # Post-processing.
             labeled_pts = list(zip(kpts, clustering.labels_))
             labeled_pts = sorted(labeled_pts, key=lambda p: p[1])
 

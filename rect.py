@@ -1,9 +1,16 @@
 #!/usr/bin/python
+"""Module for Rect class.
+"""
 import numpy as np
 
 
 class Rect:
+    """This class represents a rectangle.
 
+    Used for representing the game screen and regions of interest (ROIs.)
+
+    The `children` class attribute allows for some hierarchical structure.
+    """
     def __init__(self, top, left, height, width):
         self.top = int(top)
         self.left = int(left)
@@ -20,7 +27,7 @@ class Rect:
         return "\n".join(this_repr)
 
     def __and__(self, other):
-        """Return the intersection of ''self'' and ''other''.
+        """Return the intersection of `self` and `other`.
         """
         overlap_left = max(self.left, other.left)
         overlap_top = max(self.top, other.top)
@@ -35,7 +42,16 @@ class Rect:
                     overlap_right - overlap_left)
 
     def to_mask(self, height, width):
-        """Generate a zero-one mask from this rectangle.
+        """Generate a zero-one mask from this Rect, viewed as part of a larger
+        rectangle. The mask will have the same height, width, and
+        top-left as this Rect.
+
+        Ones/zeros correspond to pixels and denote "in mask"/"not in mask"
+        respectively.
+
+        Parameters:
+           `height`: height of the larger rectangle.
+           `width`: width of the larger rectangle.
         """
         mask = np.zeros((height, width, 3))
 
@@ -44,10 +60,12 @@ class Rect:
 
         return mask.astype(np.uint8)
 
-    def subregion(self, pct_top, pct_left, pct_height, pct_width,  #pylint:disable=too-many-arguments
+    def subregion(self, pct_top, pct_left, pct_height, pct_width,
                   padding=0):
-        """Return the subregion from (pct_top)*100% to (pct_top + pct_height)*100%,
-        (pct_left)*100% to (pct_left + pct_width)*100%, plus a bevel of (padding)*100%,
+        """Return the subregion from
+        (pct_top)*100% to (pct_top + pct_height)*100%,
+        (pct_left)*100% to (pct_left + pct_width)*100%,
+        plus a bevel of (padding)*100%,
         intersected with the screen.
         """
         top = self.top + (pct_top - padding) * self.height
