@@ -80,11 +80,17 @@ class StreamParser:
 
         return (median_best_scale, feature_locations)
 
-    def get_frame(self, time, color=False):
-        """Retrieve the frame from `self.stream` nearest to the timestamp
-        `time`, measured in seconds.
+    def get_frame(self, time=None, color=False):
+        """Attempt to retrieve a frame from `self.stream`.
+
+        Parameters:
+            - `time`: If set, get the frame nearest to this timestamp.
+               If unset, get the next frame in sequence.
+            - `color`: If false, convert the frame from color to grayscale.
         """
-        self.cap.set(0, int(time * 1000))
+        if time is not None:
+            self.cap.set(0, int(time * 1000))
+
         success, frame = self.cap.read()
 
         if success:

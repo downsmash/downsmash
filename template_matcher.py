@@ -30,21 +30,22 @@ class TemplateMatcher:
     def match(self, feature, scene, mask=None, scale=None):
         """Find the location of _feature_ in _scene_, if there is one.
 
-        Return a tuple containing the match's scale 
+        Return a tuple containing the best match scale and the best match
+        candidates.
 
         Parameters:
             `feature`: A (small) image to be matched in _scene_.
             `scene`: A (large) image, usually raw data.
             `mask`: A subregion to narrow the search to.
             `scale`: A scaling factor to use for `feature.`
-                     If None, will search for the best scaling factor
-                     (by `self.criterion`) from `self.scales`.
+                     If None, will use the best scale as returned by
+                     `self._find_best_scale`.
         """
         if mask is not None:
             scene *= mask
 
         if scale is None:
-            scale = self.find_best_scale(feature, scene)
+            scale = self._find_best_scale(feature, scene)
 
         match_candidates = []
 
@@ -82,11 +83,12 @@ class TemplateMatcher:
 
         return (scale, match_candidates)
 
-    def find_best_scale(self, feature, scene):
-        """Find the scale with the best correlation.
+    def _find_best_scale(self, feature, scene):
+        """Find the scale with the best score (by `self.criterion`) from
+        `self.scales`.
         """
         best_corr = 0
-        best_scale = 0
+        best_scale = None
 
         for scale in self.scales:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
