@@ -41,7 +41,7 @@ class Rect:
                     overlap_bottom - overlap_top,
                     overlap_right - overlap_left)
 
-    def to_mask(self, height, width):
+    def to_mask(self, height, width, color=True):
         """Generate a zero-one mask from this Rect, viewed as part of a larger
         rectangle. The mask will have the same height, width, and
         top-left as this Rect.
@@ -53,10 +53,17 @@ class Rect:
            `height`: height of the larger rectangle.
            `width`: width of the larger rectangle.
         """
-        mask = np.zeros((height, width, 3))
+        if color:
+            shape = (height, width, 3)
+            fill = (1, 1, 1)
+        else:
+            shape = (height, width)
+            fill = 1
+
+        mask = np.zeros(shape)
 
         mask[self.top:(self.top + self.height + 1),
-             self.left:(self.left + self.width + 1)] = (1, 1, 1)
+             self.left:(self.left + self.width + 1)] = fill
 
         return mask.astype(np.uint8)
 

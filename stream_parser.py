@@ -101,6 +101,7 @@ class StreamParser:
             if color:
                 return frame
             return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
         return None
 
     def sample_frame_timestamps(self, start, end, num_samples, fuzz):
