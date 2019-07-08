@@ -1,6 +1,7 @@
 from sklearn.cluster import DBSCAN
 from itertools import groupby
 
+
 def get_clusters(pts, key=lambda x: x, max_clusters=None, max_distance=14):
     """Run DBSCAN on the `pts`, applying `key` first if necessary,
     post-process the results into a list of lists, and return it,

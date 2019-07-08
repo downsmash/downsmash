@@ -6,7 +6,8 @@ import logging
 
 import numpy as np
 import cv2
-import cluster
+
+from cluster import get_clusters
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,8 +74,7 @@ class TemplateMatcher:
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
-            clusters = cluster.get_clusters(good_points,
-                                            max_distance=self.max_distance)
+            clusters = get_clusters(good_points, max_distance=self.max_distance)
 
             match_candidates = [max(clust, key=lambda pt: peak_map[pt])
                                 for clust in clusters]
