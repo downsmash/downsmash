@@ -7,7 +7,7 @@ import logging
 import cv2
 import numpy as np
 
-import cluster
+from .cluster import get_clusters
 from .rect import Rect
 from .template_matcher import TemplateMatcher
 
@@ -67,7 +67,7 @@ class StreamParser:
 
                 peaks.extend(these_peaks)
 
-        clusters = cluster.get_clusters(peaks, max_clusters=max_clusters)
+        clusters = get_clusters(peaks, max_clusters=max_clusters)
 
         feature_locations = [np.array(max(set(cluster), key=cluster.count))
                              for cluster in clusters]
