@@ -7,7 +7,7 @@ import logging
 import numpy as np
 import cv2
 
-from cluster import get_clusters
+from .cluster import get_clusters
 
 LOGGER = logging.getLogger(__name__)
 
