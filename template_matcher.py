@@ -41,7 +41,7 @@ class TemplateMatcher:
             array.
         scene : ndarray
             A (large) image, usually raw data, as an OpenCV-compatible array.
-        mask : ndarray
+        mask : Rect
             A subregion to narrow the search to, as an array of zeros and
             ones (respectively, pixels to mask out and pixels to leave in)
             of the same size as `scene`.
@@ -61,22 +61,12 @@ class TemplateMatcher:
         """
 
         scene_working = scene.copy()
-        scene_height, scene_width = scene.shape
-        crop_top = crop_left = 0
-        crop_bottom = scene_height
-        crop_right = scene_width
 
-        if mask is not None:
-            scene_working *= mask
-            if crop:
-                mask_y = [y for y in range(scene_height) if 1 in mask[y]]
-                mask_x = [x for x in range(scene_width) if 1 in mask[:, x]]
+        if (mask is not None) and not crop:
+            scene_working *= mask.to_mask()
 
-                crop_top, crop_bottom = min(mask_y), max(mask_y)
-                crop_left, crop_right = min(mask_x), max(mask_x)
-
-        scene_working = scene_working[crop_top:(crop_bottom + 1),
-                                      crop_left:(crop_right + 1)]
+        scene_working = scene_working[mask.top:(mask.top + mask.height),
+                                      mask.left:(mask.left + mask.width)]
 
         if scale is None:
             scale = self._find_best_scale(feature, scene_working)
@@ -110,9 +100,10 @@ class TemplateMatcher:
             clusters = get_clusters(good_points,
                                     max_distance=self.max_distance)
 
+            # TODO Break these down into more comprehensible comprehensions.
             match_candidates = [max(clust, key=lambda pt: peak_map[pt])
                                 for clust in clusters]
-            match_candidates = [((peak[0] + crop_top, peak[1] + crop_left),
+            match_candidates = [((peak[0] + mask.top, peak[1] + mask.left),
                                  peak_map[peak])
                                 for peak in match_candidates]
 
