@@ -44,8 +44,6 @@ class StreamParser:
         best_scale_log = []
 
         for (_, scene) in self.sample_frames(num_samples=num_samples):
-            cv2.imwrite("scene.png", scene)
-            scene = cv2.imread("scene.png")
 
             if roi:
                 max_clusters = 1
@@ -94,9 +92,6 @@ class StreamParser:
         success, frame = self.cap.read()
 
         if success:
-            cv2.imwrite('scene.png', frame)
-            frame = cv2.imread('scene.png', cv2.IMREAD_COLOR)
-
             LOGGER.info('%d\n', time)
             if color:
                 return frame
