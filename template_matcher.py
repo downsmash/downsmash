@@ -79,7 +79,7 @@ class TemplateMatcher:
                                       crop_left:(crop_right + 1)]
 
         if scale is None:
-            scale = self._find_best_scale(feature, scene)
+            scale = self._find_best_scale(feature, scene_working)
 
         match_candidates = []
 
@@ -87,7 +87,7 @@ class TemplateMatcher:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
             # Peaks in matchTemplate are good candidates.
-            peak_map = cv2.matchTemplate(scene, scaled_feature,
+            peak_map = cv2.matchTemplate(scene_working, scaled_feature,
                                          self.criterion)
 
             if self.criterion in (cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED):
@@ -103,7 +103,7 @@ class TemplateMatcher:
                 LOGGER.warning("%f %f %f %s %s", scale, self.worst_match,
                                best_val, best_loc, good_points)
 
-                cv2.imshow('edges', scene)
+                cv2.imshow('edges', scene_working)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
