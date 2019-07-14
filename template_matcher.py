@@ -1,7 +1,6 @@
 """
 """
 
-from itertools import groupby
 import logging
 
 import numpy as np
@@ -63,13 +62,12 @@ class TemplateMatcher:
             template match at a position must exceed `self.worst_match`.
         """
 
-        scene_working = scene.copy()
-
         if (mask is not None) and not crop:
+            scene_working = scene.copy()
             scene_working *= mask.to_mask()
-
-        scene_working = scene_working[mask.top:(mask.top + mask.height),
-                                      mask.left:(mask.left + mask.width)]
+        else:
+            scene_working = scene[mask.top:(mask.top + mask.height),
+                                  mask.left:(mask.left + mask.width)].copy()
 
         if scale is None:
             scale = self._find_best_scale(feature, scene_working)
@@ -99,7 +97,7 @@ class TemplateMatcher:
                 cv2.imshow('edges', scene_working)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
-            
+
             if cluster:
                 from .cluster import get_clusters
 
