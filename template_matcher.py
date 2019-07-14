@@ -28,7 +28,8 @@ class TemplateMatcher:
         self.worst_match = worst_match
         self.debug = debug
 
-    def match(self, feature, scene, mask=None, scale=None, crop=True):
+    def match(self, feature, scene, mask=None, scale=None, crop=True,
+              cluster=True):
         """Find the location of _feature_ in _scene_, if there is one.
 
         Return a tuple containing the best match scale and the best match
@@ -48,6 +49,10 @@ class TemplateMatcher:
         scale : float
             A scaling factor to use for `feature`. If None, will use the best
             scale as returned by `self._find_best_scale`.
+        crop : bool
+            Whether to crop the search region to the mask, if there is one.
+        cluster : bool
+            Whether to run DBSCAN on the matches for stability.
 
         Returns
         -------
@@ -96,9 +101,12 @@ class TemplateMatcher:
                 cv2.imshow('edges', scene_working)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
-
-            clusters = get_clusters(good_points,
-                                    max_distance=self.max_distance)
+            
+            if cluster:
+                clusters = get_clusters(good_points,
+                                        max_distance=self.max_distance)
+            else:
+                clusters = [(pt,) for pt in good_points]
 
             # TODO Break these down into more comprehensible comprehensions.
             match_candidates = [max(clust, key=lambda pt: peak_map[pt])
