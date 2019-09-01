@@ -1,0 +1,8 @@
+downsmash-segment
+youtube_dl
+numpy
+cv2
+pandas
+scikit-learn
+scipy
+sqlalchemy
