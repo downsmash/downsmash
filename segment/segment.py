@@ -4,7 +4,7 @@ import logging
 from json import dump
 import sys
 
-from core.segmenter import Segmenter
+from segmenter import Segmenter
 
 LOGGER = logging.getLogger(__name__)
 
