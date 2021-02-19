@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#/usr/bin/python
 
 import logging
 import itertools
@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 import cv2
 import pandas as pd
-from sklearn.neighbors.kde import KernelDensity
+from sklearn.neighbors import KernelDensity
 from scipy.signal import argrelmin
 
 from pkg_resources import resource_string
