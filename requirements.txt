@@ -1,8 +1,7 @@
-downsmash-segment
 youtube_dl
 numpy
-cv2
 pandas
+pytest
 scikit-learn
 scipy
 sqlalchemy
