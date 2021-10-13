@@ -8,10 +8,11 @@ import cv2
 import scipy.stats
 
 from pkg_resources import resource_string
+from importlib.resources import files
 
-from core.rect import Rect
-from core.stream_parser import StreamParser
-from core.template_matcher import TemplateMatcher
+from .rect import Rect
+from .stream_parser import StreamParser
+from .template_matcher import TemplateMatcher
 
 
 LOGGER = logging.getLogger(__name__)
@@ -32,8 +33,9 @@ SCREEN_WIDTH = 548
 SCREEN_HEIGHT = 411
 
 # Read in percent sign
-NPARR = np.fromstring(resource_string("core.resources", "pct.png"), np.uint8)
+NPARR = np.frombuffer(files("downsmash.resources").joinpath("pct.png").read_bytes(), np.uint8)
 PERCENT = cv2.imdecode(NPARR, 1)
+PERCENT = cv2.cvtColor(PERCENT, cv2.COLOR_BGR2GRAY)
 
 class Viewfinder(StreamParser):
 

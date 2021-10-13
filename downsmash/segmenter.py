@@ -10,15 +10,16 @@ import pandas as pd
 from sklearn.neighbors import KernelDensity
 from scipy.signal import argrelmin
 
-from pkg_resources import resource_string
+from importlib.resources import files
 
-from core.rect import Rect
-from core.stream_parser import StreamParser
-from viewfinder import Viewfinder
+from .rect import Rect
+from .stream_parser import StreamParser
+from .viewfinder import Viewfinder
 
 # Read in percent sign
-NPARR = np.fromstring(resource_string("core.resources", "pct.png"), np.uint8)
+NPARR = np.frombuffer(files("downsmash.resources").joinpath("pct.png").read_bytes(), np.uint8)
 PERCENT = cv2.imdecode(NPARR, 1)
+PERCENT = cv2.cvtColor(PERCENT, cv2.COLOR_BGR2GRAY)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -111,6 +112,7 @@ class MatchDataBuilder(StreamParser):
         """
         cv2.imwrite("scene.png", scene)
         scene = cv2.imread("scene.png")
+        scene = cv2.cvtColor(scene, cv2.COLOR_BGR2GRAY)
 
         scaled_percent = cv2.resize(PERCENT, (0, 0), fx=self.match.scale, fy=self.match.scale)
         scaled_percent = cv2.Laplacian(scaled_percent, cv2.CV_8U)
@@ -176,9 +178,8 @@ class MatchDataBuilder(StreamParser):
         # false negatives
         # TODO Pull this out and handle it one level up
         if mean_positive - mean_negative < 0.1 or mean_negative > 0.5:
-            LOGGER.warning("This looks like an edited/gapless set"
-                           "(mean_pos - mean_neg = %.03f)", mean_positive - mean_negative)
-            raise RuntimeError()
+            raise RuntimeError("This looks like an edited/gapless set"
+                               "(mean_pos - mean_neg = %.03f)" % (mean_positive - mean_negative))
 
         # Perform median smoothing.
         conf_series['median'] = conf_series['conf'].rolling(5).median()
