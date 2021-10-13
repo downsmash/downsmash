@@ -1,7 +1,8 @@
-youtube_dl
+flake8
+pytest
+
 numpy
 pandas
-pytest
 scikit-learn
 scipy
-sqlalchemy
+youtube_dl
