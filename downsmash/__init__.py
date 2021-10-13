@@ -11,4 +11,5 @@ PERCENT = cv2.cvtColor(PERCENT, cv2.COLOR_BGR2GRAY)
 
 LOGFMT = "[%(relativeCreated)d] [%(filename)s/%(funcName)s] %(message)s"
 logging.basicConfig(format=LOGFMT)
+LOGGER = logging.getLogger(__name__)
 
