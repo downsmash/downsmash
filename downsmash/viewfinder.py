@@ -11,24 +11,10 @@ from pkg_resources import resource_string
 from importlib.resources import files
 
 from . import PERCENT, LOGGER
+from . import constants as c
 from .rect import Rect
 from .stream_parser import StreamParser
 from .template_matcher import TemplateMatcher
-
-PERCENT_Y_POS = 358
-PERCENT_X_POS = 110
-PERCENT_X_POS_STEP = 132
-PERCENT_HEIGHT = 32
-PERCENT_WIDTH = 32
-
-PORT_Y_POS = 308
-PORT_X_POS = 20
-PORT_X_POS_STEP = 132
-PORT_HEIGHT = 74
-PORT_WIDTH = 100
-
-SCREEN_WIDTH = 548
-SCREEN_HEIGHT = 411
 
 
 class Viewfinder(StreamParser):
@@ -114,9 +100,9 @@ class Viewfinder(StreamParser):
         scale, pct_locations = self.get_pct_locations(scales=np.arange(0.72, 0.87, 0.03))
 
         # Approximate screen Y-pos from percents.
-        height = int(round(SCREEN_HEIGHT * scale))
-        width = int(round(SCREEN_WIDTH * scale))
-        top = int(round(np.mean(pct_locations, axis=0)[0] - PERCENT_Y_POS * scale))
+        height = int(round(c.SCREEN_HEIGHT * scale))
+        width = int(round(c.SCREEN_WIDTH * scale))
+        top = int(round(np.mean(pct_locations, axis=0)[0] - c.PERCENT_Y_POS * scale))
 
         # Determine the X-pos by the skewness-kurtosis method.
         LOGGER.info("Generating skewness-kurtosis map...")
@@ -195,14 +181,14 @@ class Viewfinder(StreamParser):
         locations = []
         # TODO DRY this out
         for port_number in range(4):
-            pct_roi = screen.subregion(PERCENT_Y_POS / SCREEN_HEIGHT,
-                                       (PERCENT_X_POS + port_number * PERCENT_X_POS_STEP) / SCREEN_WIDTH,
-                                       PERCENT_HEIGHT / SCREEN_HEIGHT,
-                                       PERCENT_WIDTH / SCREEN_WIDTH,
+            pct_roi = screen.subregion(c.PERCENT_Y_POS / c.SCREEN_HEIGHT,
+                                       (c.PERCENT_X_POS + port_number * c.PERCENT_X_POS_STEP) / c.SCREEN_WIDTH,
+                                       c.PERCENT_HEIGHT / c.SCREEN_HEIGHT,
+                                       c.PERCENT_WIDTH / c.SCREEN_WIDTH,
                                        padding=max_error)
 
-            pct_left = screen.left + (PERCENT_X_POS + port_number * PERCENT_X_POS_STEP) * scale
-            pct_top = screen.top + PERCENT_Y_POS * scale
+            pct_left = screen.left + (c.PERCENT_X_POS + port_number * c.PERCENT_X_POS_STEP) * scale
+            pct_top = screen.top + c.PERCENT_Y_POS * scale
 
             matcher = TemplateMatcher(scales=[scale], worst_match=0.6, debug=False)
             portscale, location = self.locate(PERCENT, num_samples=10, matcher=matcher, roi=pct_roi)
@@ -218,10 +204,10 @@ class Viewfinder(StreamParser):
             predicted.append([pct_top, pct_left])
             locations.append(location[0])
 
-            port_roi = screen.subregion(PORT_Y_POS / SCREEN_HEIGHT,
-                                        (PORT_X_POS + port_number * PORT_X_POS_STEP) / SCREEN_WIDTH,
-                                        PORT_HEIGHT / SCREEN_HEIGHT,
-                                        PORT_WIDTH / SCREEN_WIDTH,
+            port_roi = screen.subregion(c.PORT_Y_POS / c.SCREEN_HEIGHT,
+                                        (c.PORT_X_POS + port_number * c.PORT_X_POS_STEP) / c.SCREEN_WIDTH,
+                                        c.PORT_HEIGHT / c.SCREEN_HEIGHT,
+                                        c.PORT_WIDTH / c.SCREEN_WIDTH,
                                         padding=max_error)
 
             port_roi.left = max(port_roi.left, 0)
