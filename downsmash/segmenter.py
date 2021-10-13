@@ -1,26 +1,18 @@
-#/usr/bin/python
+#!/usr/bin/python
 
-import logging
 import itertools
 from dataclasses import dataclass
 
 import numpy as np
 import cv2
 import pandas as pd
-from sklearn.neighbors import KernelDensity
-from scipy.signal import argrelmin
-
-from importlib.resources import files
 
 from . import PERCENT, LOGGER
 from .rect import Rect
 from .stream_parser import StreamParser
 from .viewfinder import Viewfinder
+from .util import timeify, compute_minimum_kernel_density
 
-def timeify(time):
-    time = float(time)
-    mins, secs = time // 60, time % 60
-    return "{:.0f}:{:05.2f}".format(mins, secs)
 
 @dataclass
 class MatchData:
@@ -31,6 +23,7 @@ class MatchData:
     ports: list = None
     segments: list = None
     threshold: float = None
+
 
 class Segmenter:
     """This is MatchDataBuilderDirector, but I'm not going to call it that.
@@ -57,6 +50,7 @@ class Segmenter:
         builder = builder.refine_segments()
 
         return builder.match
+
 
 class MatchDataBuilder(StreamParser):
 
@@ -122,27 +116,6 @@ class MatchDataBuilder(StreamParser):
                 percent_corrs.append(max_corr)
         return max(percent_corrs)
 
-    @staticmethod
-    def compute_minimum_kernel_density(series):
-        """Estimate the value within the range of _series_ that is the furthest
-        away from most observations.
-        """
-        # Trim outliers for robustness.
-        p05, p95 = series.quantile((0.05, 0.95))
-        samples = np.linspace(p05, p95, num=100)
-
-        # Find the minimum kernel density.
-        kde = KernelDensity(kernel='gaussian', bandwidth=.005)
-        kde = kde.fit(np.array(series).reshape(-1, 1))
-        estimates = kde.score_samples(samples.reshape(-1, 1))
-
-        rel_mins = argrelmin(estimates)[0]
-        def depth(idx):
-            return min(estimates[idx - 1] - estimates[idx],
-                       estimates[idx + 1] - estimates[idx])
-        deepest_min = max(rel_mins, key=depth)
-        return samples[deepest_min]
-
     def get_segments(self):
         """Return the approximate match start and end times for
         the given video.
@@ -158,7 +131,7 @@ class MatchDataBuilder(StreamParser):
         conf_series = pd.DataFrame(conf_series, columns=['time', 'conf'])
         confs = conf_series['conf']
 
-        threshold = self.compute_minimum_kernel_density(confs)
+        threshold = compute_minimum_kernel_density(confs)
         self.match.threshold = threshold
         LOGGER.warning("Threshold is %.03f", threshold)
 
@@ -205,7 +178,6 @@ class MatchDataBuilder(StreamParser):
             LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
 
         return self
-
 
     def find_segment_boundary(self, time, tolerance=0.1):
         """Find the time index of a match segment boundary (start or end)

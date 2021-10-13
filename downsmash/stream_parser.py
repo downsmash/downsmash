@@ -7,9 +7,9 @@ import logging
 import cv2
 import numpy as np
 
-from .cluster import get_clusters
 from .rect import Rect
 from .template_matcher import TemplateMatcher
+from .util import get_clusters
 
 LOGGER = logging.getLogger(__name__)
 

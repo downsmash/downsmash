@@ -1,13 +1,10 @@
 #!/usr/bin/python
 
-import logging
 import itertools
 
 import numpy as np
 import cv2
 import scipy.stats
-
-from importlib.resources import files
 
 from . import PERCENT, LOGGER
 from . import constants as c
@@ -77,7 +74,6 @@ class Viewfinder(StreamParser):
             actual_vec.append(actual_y)
             actual_vec.append(actual_x)
         actual_vec = np.array(actual_vec).transpose()
-
 
         ols, resid, _, _ = np.linalg.lstsq(predicted_mat, actual_vec, rcond=None)
 
