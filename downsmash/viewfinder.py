@@ -10,10 +10,10 @@ import scipy.stats
 from pkg_resources import resource_string
 from importlib.resources import files
 
+from . import PERCENT
 from .rect import Rect
 from .stream_parser import StreamParser
 from .template_matcher import TemplateMatcher
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,10 +32,12 @@ PORT_WIDTH = 100
 SCREEN_WIDTH = 548
 SCREEN_HEIGHT = 411
 
+"""
 # Read in percent sign
 NPARR = np.frombuffer(files("downsmash.resources").joinpath("pct.png").read_bytes(), np.uint8)
 PERCENT = cv2.imdecode(NPARR, 1)
 PERCENT = cv2.cvtColor(PERCENT, cv2.COLOR_BGR2GRAY)
+"""
 
 class Viewfinder(StreamParser):
 
