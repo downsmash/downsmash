@@ -7,7 +7,6 @@ import numpy as np
 import cv2
 import scipy.stats
 
-from pkg_resources import resource_string
 from importlib.resources import files
 
 from . import PERCENT, LOGGER
