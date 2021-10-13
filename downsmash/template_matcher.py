@@ -6,6 +6,8 @@ import logging
 import numpy as np
 import cv2
 
+from .rect import Rect
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -62,12 +64,14 @@ class TemplateMatcher:
             template match at a position must exceed `self.worst_match`.
         """
 
-        if (mask is not None) and not crop:
+        if isinstance(mask, Rect) and not crop:
             scene_working = scene.copy()
             scene_working *= mask.to_mask()
-        else:
+        elif isinstance(mask, Rect):
             scene_working = scene[mask.top:(mask.top + mask.height),
                                   mask.left:(mask.left + mask.width)].copy()
+        else:
+            scene_working = scene.copy()
 
         if scale is None:
             scale = self._find_best_scale(feature, scene_working)
@@ -109,9 +113,12 @@ class TemplateMatcher:
             # TODO Break these down into more comprehensible comprehensions.
             match_candidates = [max(clust, key=lambda pt: peak_map[pt])
                                 for clust in clusters]
-            match_candidates = [((peak[0] + mask.top, peak[1] + mask.left),
-                                 peak_map[peak])
-                                for peak in match_candidates]
+            if isinstance(mask, Rect):
+                match_candidates = [((peak[0] + mask.top, peak[1] + mask.left),
+                                     peak_map[peak])
+                                    for peak in match_candidates]
+            else:
+                match_candidates = [(peak, peak_map[peak]) for peak in match_candidates]
 
         return (scale, match_candidates)
 

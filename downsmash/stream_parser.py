@@ -47,7 +47,8 @@ class StreamParser:
 
             if roi:
                 max_clusters = 1
-                mask = roi.to_mask(self.shape.height, self.shape.width)
+                mask = roi
+                # mask = roi.to_mask(self.shape.height, self.shape.width)
             else:
                 max_clusters = None
                 mask = None
@@ -103,7 +104,7 @@ class StreamParser:
         """
         """
         framerate = self.cap.get(5)
-        for time in np.linspace(start, end, num=num_samples):
+        for time in np.linspace(start, end, num=int(num_samples)):
             time += randint(-1 * fuzz, fuzz) / framerate
 
             if time < start:
@@ -130,7 +131,7 @@ class StreamParser:
         total_time = end - start
 
         if num_samples is None:
-            num_samples = total_time // interval
+            num_samples = max(total_time // interval, 10)
 
         for time in self.sample_frame_timestamps(start, end, num_samples, fuzz):
             frame = self.get_frame(time, color=color)
