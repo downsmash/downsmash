@@ -8,23 +8,15 @@ class Rect:
     """This class represents a rectangle.
 
     Used for representing the game screen and regions of interest (ROIs.)
-
-    The `children` class attribute allows for some hierarchical structure.
     """
     def __init__(self, top, left, height, width):
         self.top = int(top)
         self.left = int(left)
         self.height = int(height)
         self.width = int(width)
-        self.children = []
 
     def __repr__(self):
-        this_repr = ['{height}x{width}+{top}+{left}'.format(**self.__dict__)]
-        for child in self.children:
-            for line in repr(child).split("\n"):
-                this_repr.append("-> " + line)
-
-        return "\n".join(this_repr)
+        return '{height}x{width}+{top}+{left}'.format(**self.__dict__)
 
     def __and__(self, other):
         """Return the intersection of `self` and `other`.

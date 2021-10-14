@@ -11,221 +11,113 @@ from . import PERCENT, LOGGER
 from .rect import Rect
 from .stream_parser import StreamParser
 from .viewfinder import Viewfinder
-from .util import timeify, compute_minimum_kernel_density
-
-
-@dataclass
-class MatchData:
-    """Wrapper class for parsed match data.
-    """
-    screen: Rect = None
-    scale: float = None
-    ports: list = None
-    segments: list = None
-    threshold: float = None
+from .util import timeify, compute_minimum_kernel_density, bisect
 
 
 class Segmenter:
-    """This is MatchDataBuilderDirector, but I'm not going to call it that.
-    """
-    def __init__(self, filename, polling_interval=2):
+    def __init__(self, filename, view, config):
         self.filename = filename
-        self.polling_interval = polling_interval
+        self.stream = StreamParser(filename)
+        self.view = view
 
-    def parse(self):
+        self.interval = config.get("polling_interval", 2)
+
+        self.frames = self.stream.sample_frames(interval=self.interval)
+        self.confidence = [(time, self.calculate_frame_confidence(scene, PERCENT, view.ports))
+                           for (time, scene) in self.frames]
+
+        self.confidence = pd.DataFrame(self.confidence, columns=['time', 'conf'])
+
+    def calculate_frame_confidence(self, scene, feature, rois):
+        """Estimate the maximum correlation of any ROI in _scene_
+        to the unscaled _feature_.
         """
-        """
-        builder = MatchDataBuilder(self.filename, polling_interval=self.polling_interval)
 
-        LOGGER.warning("Video OK, looking for screen...")
-        builder = builder.get_screen()
-
-        LOGGER.warning("Checking port locations...")
-        builder = builder.get_ports()
-
-        LOGGER.warning("Finding segments...")
-        builder = builder.get_segments()
-
-        LOGGER.warning("Refining segment boundaries...")
-        builder = builder.refine_segments()
-
-        return builder.match
-
-
-class MatchDataBuilder(StreamParser):
-
-    def __init__(self, filename, polling_interval=2, min_gap=10):
-        StreamParser.__init__(self, filename)
-
-        # These are segmentation strategy parameters
-        self.polling_interval = polling_interval
-        self.min_gap = min_gap
-
-        # TODO This has a chance of failing, so probably it needs to be its own method
-        self.view = Viewfinder(self.filename, polling_interval=self.polling_interval)
-
-        self.match = MatchData()
-
-    def get_screen(self):
-        """
-        """
-        scale, screen = self.view.detect_screen()
-        LOGGER.warning("Estimated screen is %s", screen)
-        LOGGER.warning("Estimated scale is %.03f", scale)
-
-        LOGGER.warning("Correcting screen...")
-        scale, screen = self.view.correct_screen(scale, screen)
-        LOGGER.warning("Estimated screen is %s", screen)
-        LOGGER.warning("Estimated scale is %.03f", scale)
-
-        # TODO There needs to be some kind of robustness check on these to
-        # make sure no ill-conditioning weirdness happens with OLS.
-        self.match.scale = scale
-        self.match.screen = screen
-
-        return self
-
-    def get_ports(self):
-        ports, _, _ = self.view.detect_ports(self.match.scale, self.match.screen)
-        if not ports:
-            raise RuntimeError("No ports found!")
-        LOGGER.warning("Ports are at %s", " ".join(str(s) for s in ports))
-
-        self.match.ports = ports
-        return self
-
-    def calculate_frame_confidence(self, scene):
-        """Estimate the maximum correlation of any percent ROI in __scene__
-        to the PERCENT image.
-        """
-        cv2.imwrite("scene.png", scene)
-        scene = cv2.imread("scene.png")
-        scene = cv2.cvtColor(scene, cv2.COLOR_BGR2GRAY)
-
-        scaled_percent = cv2.resize(PERCENT, (0, 0), fx=self.match.scale, fy=self.match.scale)
-        scaled_percent = cv2.Laplacian(scaled_percent, cv2.CV_8U)
+        scaled_feature = cv2.resize(feature, (0, 0), fx=self.view.scale, fy=self.view.scale)
+        scaled_feature = cv2.Laplacian(scaled_feature, cv2.CV_8U)
 
         percent_corrs = []
-        for roi in self.match.ports:
+        for roi in rois:
             if roi is not None:
                 scene_roi = scene[roi.top:(roi.top + roi.height), roi.left:(roi.left + roi.width)]
                 scene_roi = cv2.Laplacian(scene_roi, cv2.CV_8U)
 
-                corr_map = cv2.matchTemplate(scene_roi, scaled_percent, cv2.TM_CCOEFF_NORMED)
+                corr_map = cv2.matchTemplate(scene_roi, scaled_feature, cv2.TM_CCOEFF_NORMED)
                 _, max_corr, _, _ = cv2.minMaxLoc(corr_map)
                 percent_corrs.append(max_corr)
         return max(percent_corrs)
 
-    def get_segments(self):
+    def get_threshold(self):
+        """Return an approximate threshold value to decide whether a frame
+        contains Melee.
+        """
+        confs = self.confidence['conf']
+
+        return compute_minimum_kernel_density(confs)
+
+    def get_segments(self, threshold):
         """Return the approximate match start and end times for
         the given video.
+
         """
-        conf_series = []
+        confs = self.confidence['conf']
 
-        for (time, scene) in self.sample_frames(interval=self.polling_interval):
-            conf = self.calculate_frame_confidence(scene)
+        ### MOVE THIS OUT
 
-            LOGGER.info("%d\t%f", time, conf)
-            conf_series.append([time, conf])
-
-        conf_series = pd.DataFrame(conf_series, columns=['time', 'conf'])
-        confs = conf_series['conf']
-
-        threshold = compute_minimum_kernel_density(confs)
-        self.match.threshold = threshold
-        LOGGER.warning("Threshold is %.03f", threshold)
-
-        # How separated are the two groups?
-        mean_positive = np.mean(confs[confs >= threshold])
-        mean_negative = np.mean(confs[confs < threshold])
-        LOGGER.warning("Group means are (+)%.03f (-)%.03f", mean_positive, mean_negative)
-
-        # TODO Replace magic numbers
-        # TODO This error message needs to be more descriptive - something about
-        # false negatives
-        # TODO Pull this out and handle it one level up
-        if mean_positive - mean_negative < 0.1 or mean_negative > 0.5:
-            raise RuntimeError("This looks like an edited/gapless set"
-                               "(mean_pos - mean_neg = %.03f)" % (mean_positive - mean_negative))
+        ### END MOVE OUT
 
         # Perform median smoothing.
-        conf_series['median'] = conf_series['conf'].rolling(5).median()
-        conf_series['median'] = conf_series['median'].fillna(method='bfill')
-        conf_series['median'] = conf_series['median'].fillna(method='ffill')
+        self.confidence['median'] = self.confidence['conf'].rolling(5).median()
+        self.confidence['median'] = self.confidence['median'].fillna(method='bfill')
+        self.confidence['median'] = self.confidence['median'].fillna(method='ffill')
 
         # Now classify as Melee/no Melee based on whether we are greater/less
         # than the threshold.
-        groups = itertools.groupby(conf_series.iterrows(),
+        groups = itertools.groupby(self.confidence.iterrows(),
                                    lambda row: row[1]['median'] > threshold)
         groups = [(k, list(g)) for k, g in groups]
-        segments = [(self.polling_interval * g[0][0],
-                     self.polling_interval * g[-1][0]) for k, g in groups if k]
+        segments = [(self.interval * g[0][0],
+                     self.interval * g[-1][0]) for k, g in groups if k]
 
         for idx, segment in enumerate(segments):
             start, end = segment
             LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
 
-        self.match.segments = segments
+        return segments
 
-        return self
-
-    def refine_segments(self):
-        for idx, segment in enumerate(self.match.segments):
+    def refine_segments(self, segments):
+        for idx, segment in enumerate(segments):
             start, end = segment
-            start = self.find_segment_boundary(start)
-            end = self.find_segment_boundary(end)
-            self.match.segments[idx] = (start, end)
+            start = self.find_segment_boundary(start, .1)
+            end = self.find_segment_boundary(end, .1)
+            segments[idx] = (start, end)
             LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
 
-        return self
+        return segments
 
-    def find_segment_boundary(self, time, tolerance=0.1):
+    def find_segment_boundary(self, time, tolerance):
         """Find the time index of a match segment boundary (start or end)
         near _time_, accurate to within _tolerance_ seconds.
         Uses the bisection method to find an approximate solution for
         f(t) = conf_at(t) - self.threshold = 0.
         """
+
+        threshold = self.get_threshold()
         def conf_at(time):
-            scene = self.get_frame(time)
+            scene = self.stream.get_frame(time)
             if scene is not None:
-                return self.calculate_frame_confidence(scene)
-            return None
+                conf = self.calculate_frame_confidence(scene, PERCENT, self.view.ports)
+                return conf - threshold
+            return 0 - threshold
 
-        # TODO Magic number
-        window = self.min_gap * 1.5
+        window = self.interval
+        for _ in range(20):
+            start = max(0, time - window)
+            # Have to read from strictly before the end of the video.
+            end = min(self.stream.length - tolerance, time + window)
+            try:
+                return bisect(conf_at, start, end, tolerance)
+            except ValueError:  # bad interval --- no sign change
+                window += 0.5
 
-        start = max(0, time - window / 2)
-        # Have to read from strictly before the end of the video.
-        # length() - 1, etc.
-        end = min(self.length - tolerance, time + window / 2)
-
-        # First make sure we have an interval to which bisection is applicable
-        # (that is, one on which f(t) changes sign.)
-        # Also compute start and end confs.
-        plus_to_minus = None
-        minus_to_plus = None
-        while not (plus_to_minus or minus_to_plus):
-            if plus_to_minus is not None:
-                start += 1
-            if minus_to_plus is not None:
-                end -= 1
-
-            if start >= end:
-                return end
-
-            start_conf = conf_at(start)
-            end_conf = conf_at(end)
-
-            plus_to_minus = (start_conf > self.match.threshold > end_conf)
-            minus_to_plus = (start_conf < self.match.threshold < end_conf)
-
-        while end - start > tolerance:
-            middle = (start + end) / 2
-            middle_conf = conf_at(middle)
-            if (self.match.threshold > middle_conf and self.match.threshold > start_conf
-                    or self.match.threshold < middle_conf and self.match.threshold < start_conf):
-                start = middle
-            else:
-                end = middle
-
-        return (start + end) / 2
+        raise ValueError("Could not find a match boundary.")

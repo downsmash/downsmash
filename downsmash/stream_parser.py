@@ -36,19 +36,16 @@ class StreamParser:
         self.shape = Rect(0, 0, self.cap.get(4), self.cap.get(3))
         self.debug = debug
 
-    def locate(self, feature, roi=None, matcher=TemplateMatcher(),
-               num_samples=10):
+    def locate(self, scenes, feature, roi=None, matcher=TemplateMatcher()):
         """asdfkjasdlfjas
         """
         peaks = []
         best_scale_log = []
 
-        for (_, scene) in self.sample_frames(num_samples=num_samples):
-
+        for scene in scenes:
             if roi:
                 max_clusters = 1
                 mask = roi
-                # mask = roi.to_mask(self.shape.height, self.shape.width)
             else:
                 max_clusters = None
                 mask = None
@@ -73,11 +70,11 @@ class StreamParser:
         feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
 
         if best_scale_log:
-            median_best_scale = np.mean(best_scale_log)
+            best_scale = np.mean(best_scale_log)
         else:
-            median_best_scale = None
+            best_scale = None
 
-        return (median_best_scale, feature_locations)
+        return (best_scale, feature_locations)
 
     def get_frame(self, time=None, color=False):
         """Attempt to retrieve a frame from `self.stream`.
