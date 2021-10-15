@@ -1,4 +1,5 @@
-import dataclasses, json
+import dataclasses
+import json
 
 import numpy as np
 
@@ -7,17 +8,20 @@ from .rect import Rect
 from .viewfinder import Viewfinder
 from .segmenter import Segmenter
 
+
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
         return super().default(o)
 
+
 @dataclasses.dataclass
 class View:
     screen: Rect = None
     scale: float = None
     ports: list[Rect] = None
+
 
 @dataclasses.dataclass
 class MatchData:
@@ -27,7 +31,8 @@ class MatchData:
     segments: list = None
     threshold: float = None
 
-def watch(filename, config = None):
+
+def watch(filename, config=None):
     if not config:
         config = {}
 
@@ -61,4 +66,8 @@ def watch(filename, config = None):
     match_data.segments = segmenter.get_segments(match_data.threshold)
     match_data.segments = segmenter.refine_segments(match_data.segments)
 
-    return json.dumps(match_data, cls=EnhancedJSONEncoder, default=lambda o: o.__dict__, sort_keys=True, indent=2)
+    return json.dumps(match_data,
+                      cls=EnhancedJSONEncoder,
+                      default=lambda o: o.__dict__,
+                      sort_keys=True,
+                      indent=2)

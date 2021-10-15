@@ -107,6 +107,7 @@ def overlay_map(frames):
 
     return edges
 
+
 def find_dlt(predicted, locations):
     """Determine the direct linear transformation that moves the percent signs
     to where they should be using OLS (ordinary least squares.)
@@ -143,8 +144,8 @@ def find_dlt(predicted, locations):
     scale_factor, shift_x, shift_y = ols
     return (scale_factor, shift_x, shift_y)
 
-def bisect(f, start, end, tolerance):
 
+def bisect(f, start, end, tolerance):
     # First make sure we have an interval to which bisection is applicable
     # (that is, one on which f(t) changes sign.)
     # Also compute start and end confs.
