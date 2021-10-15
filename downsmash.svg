@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="85.96563mm"
+   height="30.968063mm"
+   viewBox="0 0 85.965629 30.968064"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1.1 (3bf5ae0d25, 2021-09-20)"
+   sodipodi:docname="downsmash.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     fit-margin-top="10"
+     fit-margin-left="10"
+     fit-margin-bottom="10"
+     fit-margin-right="10"
+     inkscape:zoom="1"
+     inkscape:cx="92.5"
+     inkscape:cy="171"
+     inkscape:window-width="1876"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1">
+    <sodipodi:guide
+       position="10.135957,8.1550024"
+       orientation="1,0"
+       id="guide17973" />
+    <sodipodi:guide
+       position="75.931223,6.0913123"
+       orientation="1,0"
+       id="guide17975" />
+  </sodipodi:namedview>
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-58.572749,-46.017029)">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-size:10.5833px;line-height:1.25;font-family:'A-OTF Folk Pro';-inkscape-font-specification:'A-OTF Folk Pro Heavy';stroke-width:0.264583"
+       x="68.001251"
+       y="64.515419"
+       id="text4059"><tspan
+         sodipodi:role="line"
+         id="tspan4057"
+         style="font-style:normal;font-variant:normal;font-weight:900;font-stretch:normal;font-family:'A-OTF Folk Pro';-inkscape-font-specification:'A-OTF Folk Pro Heavy';stroke-width:0.264583"
+         x="68.001251"
+         y="64.515419">Downsmash</tspan></text>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1.365;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="M 68.708706,66.302593 H 134.50397 Z"
+       id="path17156"
+       sodipodi:nodetypes="ccc" />
+  </g>
+</svg>
