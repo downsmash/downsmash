@@ -35,34 +35,6 @@ class Rect:
             overlap_right - overlap_left,
         )
 
-    def to_mask(self, height, width, color=True):
-        """Generate a zero-one mask from this Rect, viewed as part of a larger
-        rectangle. The mask will have the same height, width, and
-        top-left as this Rect.
-
-        Ones/zeros correspond to pixels and denote "in mask"/"not in mask"
-        respectively.
-
-        Parameters:
-           `height`: height of the larger rectangle.
-           `width`: width of the larger rectangle.
-        """
-        if color:
-            shape = (height, width, 3)
-            fill = (1, 1, 1)
-        else:
-            shape = (height, width)
-            fill = 1
-
-        mask = np.zeros(shape)
-
-        mask[
-            self.top : (self.top + self.height + 1),
-            self.left : (self.left + self.width + 1),
-        ] = fill
-
-        return mask.astype(np.uint8)
-
     def subregion(self, pct_top, pct_left, pct_height, pct_width, padding=0):
         """Return the subregion from
         (pct_top)*100% to (pct_top + pct_height)*100%,
