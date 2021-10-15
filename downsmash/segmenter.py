@@ -1,16 +1,12 @@
 #!/usr/bin/python
 
 import itertools
-from dataclasses import dataclass
 
-import numpy as np
 import cv2
 import pandas as pd
 
 from . import PERCENT, LOGGER
-from .rect import Rect
 from .stream_parser import StreamParser
-from .viewfinder import Viewfinder
 from .util import timeify, compute_minimum_kernel_density, bisect
 
 
@@ -20,7 +16,7 @@ class Segmenter:
         self.stream = StreamParser(filename)
         self.view = view
 
-        self.interval = config.get("polling_interval", 2)
+        self.interval = config.get("polling_interval", 5)
 
         self.frames = self.stream.sample_frames(interval=self.interval)
         self.confidence = [(time, self.calculate_frame_confidence(scene, PERCENT, view.ports))
@@ -60,12 +56,6 @@ class Segmenter:
         the given video.
 
         """
-        confs = self.confidence['conf']
-
-        ### MOVE THIS OUT
-
-        ### END MOVE OUT
-
         # Perform median smoothing.
         self.confidence['median'] = self.confidence['conf'].rolling(5).median()
         self.confidence['median'] = self.confidence['median'].fillna(method='bfill')
@@ -88,8 +78,8 @@ class Segmenter:
     def refine_segments(self, segments):
         for idx, segment in enumerate(segments):
             start, end = segment
-            start = self.find_segment_boundary(start, .1)
-            end = self.find_segment_boundary(end, .1)
+            start = self.find_segment_boundary(start, 0.5)
+            end = self.find_segment_boundary(end, 0.5)
             segments[idx] = (start, end)
             LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
 
@@ -118,6 +108,12 @@ class Segmenter:
             try:
                 return bisect(conf_at, start, end, tolerance)
             except ValueError:  # bad interval --- no sign change
-                window += 0.5
+                window += tolerance
+
+                # Make sure we didn't hit the boundaries of the video.
+                if start == 0:
+                    return start
+                if end == self.stream.length - tolerance:
+                    return end
 
         raise ValueError("Could not find a match boundary.")

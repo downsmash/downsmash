@@ -3,8 +3,6 @@
 import itertools
 
 import numpy as np
-import cv2
-import scipy.stats
 
 from . import PERCENT, LOGGER
 from . import constants as c
@@ -20,7 +18,7 @@ class Viewfinder(StreamParser):
         StreamParser.__init__(self, filename)
         
         # TODO document these.
-        frames_to_sample = config.get("frames_to_sample", 50)
+        frames_to_sample = config.get("frames_to_sample", 15)
         self.frames = [frame for _, frame
                        in self.sample_frames(num_samples=frames_to_sample)]
 
@@ -132,7 +130,6 @@ class Viewfinder(StreamParser):
         ports = []
         predicted = []
         locations = []
-        # TODO DRY this out
         for port_number in range(4):
             pct_roi = screen.subregion(c.PERCENT_Y_POS / c.SCREEN_HEIGHT,
                                        (c.PERCENT_X_POS + port_number * c.PERCENT_X_POS_STEP) / c.SCREEN_WIDTH,
