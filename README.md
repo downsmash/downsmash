@@ -1,6 +1,8 @@
 <div align="center">
 <img alt="Downsmash" src="https://raw.githubusercontent.com/downsmash/downsmash/master/downsmash.png" />
 <br />
+<img alt="What Downsmash does" src="https://raw.githubusercontent.com/downsmash/downsmash/master/what_it_does.png" />
+<br />
 <span>Downsmash turns Melee into data.</span>
 </div>
 
