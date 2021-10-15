@@ -1,4 +1,6 @@
-# downsmash/segment
+<div align="center">
+<img alt="Downsmash" src="https://raw.githubusercontent.com/downsmash/downsmash/master/downsmash.png" />
+</div>
 
 Part of the [Downsmash](downsma.sh) project.
 
