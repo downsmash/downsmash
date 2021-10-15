@@ -57,10 +57,6 @@ class StreamParser:
 
                 these_peaks = sorted(these_peaks, key=lambda pt: pt[1])
                 these_peaks = [loc for loc, corr in these_peaks]
-                if self.debug:
-                    LOGGER.warning(
-                        "%s", "\t".join(str(k) for k in these_peaks)
-                    )
 
                 peaks.extend(these_peaks)
 
@@ -96,8 +92,6 @@ class StreamParser:
             if color:
                 return frame
             return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        return None
 
     def sample_frame_timestamps(self, start, end, num_samples, fuzz):
         """ """
