@@ -88,15 +88,19 @@ class Viewfinder(StreamParser):
             y, x = location
             return y // self.percent_y_tolerance
 
-        pct_locations = sorted(pct_locations, key=y_bin)
-        location_groups = itertools.groupby(pct_locations, key=y_bin)
+        location_groups = sorted(pct_locations, key=y_bin)
+        location_groups = itertools.groupby(location_groups, key=y_bin)
         location_groups = [list(g) for k, g in location_groups]
 
-        # Choose the biggest group.
-        pct_locations = max(location_groups, key=len)
-        pct_locations = list(pct_locations)
+        # Choose the group by majority vote.
+        def votes_for(group):
+            return sum(pct_locations[loc] for loc in group)
 
-        return (scale, pct_locations)
+        group_to_return = max(location_groups, key=votes_for)
+        group_to_return = list(group_to_return)
+
+
+        return (scale, group_to_return)
 
     def correct_screen(self, scale, screen):
         _, predicted, locations = self.detect_ports(scale, screen)
@@ -143,15 +147,16 @@ class Viewfinder(StreamParser):
             matcher = TemplateMatcher(scales=[scale], worst_match=0.6, debug=False)
             portscale, location = self.locate(self.frames, PERCENT, matcher=matcher, roi=pct_roi)
 
-            if portscale is None:
+            if portscale is None or not location:
                 ports.append(None)
             else:
+                location = max(location.keys(), key=lambda loc: location[loc])
                 LOGGER.warning("Detected port %d at (%d, %d) (error %.03f px, %.03f px)",
-                               port_number + 1, location[0][0], location[0][1],
-                               location[0][0] - pct_top, location[0][1] - pct_left)
+                               port_number + 1, location[0], location[1],
+                               location[0] - pct_top, location[1] - pct_left)
 
                 predicted.append([pct_top, pct_left])
-                locations.append(location[0])
+                locations.append(location)
 
                 port_roi = screen.subregion(c.PORT_Y_POS / c.SCREEN_HEIGHT,
                                             (c.PORT_X_POS + port_number * c.PORT_X_POS_STEP) / c.SCREEN_WIDTH,

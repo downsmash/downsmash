@@ -65,9 +65,7 @@ class StreamParser:
 
         clusters = get_clusters(peaks, max_clusters=max_clusters)
 
-        feature_locations = [np.array(max(set(cluster), key=cluster.count))
-                             for cluster in clusters]
-        feature_locations = sorted(feature_locations, key=lambda pt: pt[1])
+        feature_locations = {max(set(cluster), key=cluster.count): len(cluster) for cluster in clusters}
 
         if best_scale_log:
             best_scale = np.mean(best_scale_log)
