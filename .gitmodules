@@ -1,3 +1,0 @@
-[submodule "segment/core"]
-	path = segment/core
-	url = git://github.com/downsmash/core.git
