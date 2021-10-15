@@ -14,10 +14,7 @@ def __main__():
     batch_dir = os.path.dirname("batch/")
     cachefile = os.path.join(batch_dir, "cache")
 
-    ydl_opts = {
-        "format": "134",
-        "outtmpl": "vods/%(id)s.%(ext)s"
-    }
+    ydl_opts = {"format": "134", "outtmpl": "vods/%(id)s.%(ext)s"}
 
     with open(cachefile, "a+") as cache:
         for video in sys.stdin:
@@ -27,14 +24,20 @@ def __main__():
                 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                     try:
                         ydl.download([video])
-                        segment.__main__(["vods/{0}.mp4".format(video),
-                                          "-o",
-                                          "../data/{0}.json".format(video)])
+                        segment.__main__(
+                            [
+                                "vods/{0}.mp4".format(video),
+                                "-o",
+                                "../data/{0}.json".format(video),
+                            ]
+                        )
                     except youtube_dl.utils.DownloadError:
                         # Video predates 480p
                         LOGGER.error("Segmentation failed!")
-                        err = ("The parser does not currently support videos "
-                               "in resolution lower than 480p.")
+                        err = (
+                            "The parser does not currently support videos "
+                            "in resolution lower than 480p."
+                        )
                         LOGGER.error("Guru meditation: %s", err)
                         continue
                     except RuntimeError as err:

@@ -24,8 +24,9 @@ class StreamParser:
         cap = cv2.VideoCapture(filename)
 
         if not cap.isOpened():
-            raise RuntimeError('File "{0}" could not be read from.'
-                               .format(filename))
+            raise RuntimeError(
+                'File "{0}" could not be read from.'.format(filename)
+            )
 
         self.cap = cap
         try:
@@ -37,8 +38,7 @@ class StreamParser:
         self.debug = debug
 
     def locate(self, scenes, feature, roi=None, matcher=TemplateMatcher()):
-        """asdfkjasdlfjas
-        """
+        """asdfkjasdlfjas"""
         peaks = []
         best_scale_log = []
 
@@ -58,14 +58,18 @@ class StreamParser:
                 these_peaks = sorted(these_peaks, key=lambda pt: pt[1])
                 these_peaks = [loc for loc, corr in these_peaks]
                 if self.debug:
-                    LOGGER.warning("%s",
-                                   "\t".join(str(k) for k in these_peaks))
+                    LOGGER.warning(
+                        "%s", "\t".join(str(k) for k in these_peaks)
+                    )
 
                 peaks.extend(these_peaks)
 
         clusters = get_clusters(peaks, max_clusters=max_clusters)
 
-        feature_locations = {max(set(cluster), key=cluster.count): len(cluster) for cluster in clusters}
+        feature_locations = {
+            max(set(cluster), key=cluster.count): len(cluster)
+            for cluster in clusters
+        }
 
         if best_scale_log:
             best_scale = np.mean(best_scale_log)
@@ -88,7 +92,7 @@ class StreamParser:
         success, frame = self.cap.read()
 
         if success:
-            LOGGER.info('%d\n', time)
+            LOGGER.info("%d\n", time)
             if color:
                 return frame
             return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -96,8 +100,7 @@ class StreamParser:
         return None
 
     def sample_frame_timestamps(self, start, end, num_samples, fuzz):
-        """
-        """
+        """ """
         framerate = self.cap.get(5)
         for time in np.linspace(start, end, num=int(num_samples)):
             time += randint(-1 * fuzz, fuzz) / framerate
@@ -109,14 +112,23 @@ class StreamParser:
 
             yield time
 
-    def sample_frames(self, start=None, end=None, interval=None,
-                      num_samples=None, fuzz=0, color=False):
-        """Generate frames based on the parameters given.
-        """
-        if (interval is None and num_samples is None) or \
-                None not in (interval, num_samples):
-            raise ValueError('exactly one of (interval, num_samples) '
-                             'must be set')
+    def sample_frames(
+        self,
+        start=None,
+        end=None,
+        interval=None,
+        num_samples=None,
+        fuzz=0,
+        color=False,
+    ):
+        """Generate frames based on the parameters given."""
+        if (interval is None and num_samples is None) or None not in (
+            interval,
+            num_samples,
+        ):
+            raise ValueError(
+                "exactly one of (interval, num_samples) " "must be set"
+            )
 
         if start is None or start < 0:
             start = 0
@@ -128,7 +140,9 @@ class StreamParser:
         if num_samples is None:
             num_samples = max(total_time // interval, 10)
 
-        for time in self.sample_frame_timestamps(start, end, num_samples, fuzz):
+        for time in self.sample_frame_timestamps(
+            start, end, num_samples, fuzz
+        ):
             frame = self.get_frame(time, color=color)
             if frame is not None:
                 yield (time, frame)

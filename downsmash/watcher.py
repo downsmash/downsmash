@@ -25,8 +25,8 @@ class View:
 
 @dataclasses.dataclass
 class MatchData:
-    """Wrapper class for parsed match data.
-    """
+    """Wrapper class for parsed match data."""
+
     view: View = None
     segments: list = None
     threshold: float = None
@@ -51,23 +51,29 @@ def watch(filename, config=None):
     match_data.threshold = segmenter.get_threshold()
 
     # How separated are the two groups?
-    confs = segmenter.confidence['conf']
+    confs = segmenter.confidence["conf"]
     mean_positive = np.mean(confs[confs >= match_data.threshold])
     mean_negative = np.mean(confs[confs < match_data.threshold])
-    LOGGER.warning("Group means are (+)%.03f (-)%.03f", mean_positive, mean_negative)
+    LOGGER.warning(
+        "Group means are (+)%.03f (-)%.03f", mean_positive, mean_negative
+    )
 
     # TODO Replace magic numbers
     # TODO This error message needs to be more descriptive - something about
     # false negatives
     if mean_positive - mean_negative < 0.1 or mean_negative > 0.5:
-        raise RuntimeError("This looks like an edited/gapless set"
-                           "(mean_pos - mean_neg = %.03f)" % (mean_positive - mean_negative))
+        raise RuntimeError(
+            "This looks like an edited/gapless set"
+            "(mean_pos - mean_neg = %.03f)" % (mean_positive - mean_negative)
+        )
 
     match_data.segments = segmenter.get_segments(match_data.threshold)
     match_data.segments = segmenter.refine_segments(match_data.segments)
 
-    return json.dumps(match_data,
-                      cls=EnhancedJSONEncoder,
-                      default=lambda o: o.__dict__,
-                      sort_keys=True,
-                      indent=2)
+    return json.dumps(
+        match_data,
+        cls=EnhancedJSONEncoder,
+        default=lambda o: o.__dict__,
+        sort_keys=True,
+        indent=2,
+    )

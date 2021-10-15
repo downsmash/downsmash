@@ -12,8 +12,7 @@ from sklearn.neighbors import KernelDensity
 
 
 def timeify(time):
-    """Format a time in seconds to a minutes/seconds timestamp.
-    """
+    """Format a time in seconds to a minutes/seconds timestamp."""
     time = float(time)
     mins, secs = time // 60, time % 60
     return f"{mins:.0f}:{secs:05.2f}"
@@ -33,7 +32,9 @@ def get_clusters(pts, key=lambda x: x, max_clusters=None, max_distance=14):
         labeled_pts = list(zip(kpts, clustering.labels_))
         labeled_pts = sorted(labeled_pts, key=lambda p: p[1])
 
-        clusters = [list(g) for _, g in groupby(labeled_pts, key=lambda p: p[1])]
+        clusters = [
+            list(g) for _, g in groupby(labeled_pts, key=lambda p: p[1])
+        ]
         clusters = [[p[0] for p in clust] for clust in clusters]
         clusters = list(sorted(clusters, key=len, reverse=True))
 
@@ -50,15 +51,18 @@ def compute_minimum_kernel_density(series):
     samples = np.linspace(p05, p95, num=100)
 
     # Find the minimum kernel density.
-    kde = KernelDensity(kernel='gaussian', bandwidth=.005)
+    kde = KernelDensity(kernel="gaussian", bandwidth=0.005)
     kde = kde.fit(np.array(series).reshape(-1, 1))
     estimates = kde.score_samples(samples.reshape(-1, 1))
 
     rel_mins = argrelmin(estimates)[0]
 
     def depth(idx):
-        return min(estimates[idx - 1] - estimates[idx],
-                   estimates[idx + 1] - estimates[idx])
+        return min(
+            estimates[idx - 1] - estimates[idx],
+            estimates[idx + 1] - estimates[idx],
+        )
+
     deepest_min = max(rel_mins, key=depth)
 
     return samples[deepest_min]
@@ -90,7 +94,9 @@ def overlay_map(frames):
 
     skew_map = scipy.stats.skew(frames, axis=0)
     kurt_map = scipy.stats.kurtosis(frames, axis=0)
-    min_map = np.minimum(skew_map, kurt_map)  # pylint:disable=assignment-from-no-return
+    min_map = np.minimum(
+        skew_map, kurt_map
+    )  # pylint:disable=assignment-from-no-return
 
     min_map = scale_to_interval(min_map, 0, 255).astype(np.uint8)
 
@@ -152,8 +158,8 @@ def bisect(f, start, end, tolerance):
     start_value = f(start)
     end_value = f(end)
 
-    plus_to_minus = (start_value > 0 > end_value)
-    minus_to_plus = (start_value < 0 < end_value)
+    plus_to_minus = start_value > 0 > end_value
+    minus_to_plus = start_value < 0 < end_value
 
     if not (minus_to_plus or plus_to_minus):
         raise ValueError(f"bisect() got a bad interval [{start}, {end}]")
@@ -161,7 +167,9 @@ def bisect(f, start, end, tolerance):
     while end - start > tolerance:
         middle = (start + end) / 2
         middle_value = f(middle)
-        if (0 > middle_value and 0 > start_value) or (0 < middle_value and 0 < start_value):
+        if (0 > middle_value and 0 > start_value) or (
+            0 < middle_value and 0 < start_value
+        ):
             start = middle
         else:
             end = middle

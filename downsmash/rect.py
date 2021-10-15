@@ -9,6 +9,7 @@ class Rect:
 
     Used for representing the game screen and regions of interest (ROIs.)
     """
+
     def __init__(self, top, left, height, width):
         self.top = int(top)
         self.left = int(left)
@@ -16,11 +17,10 @@ class Rect:
         self.width = int(width)
 
     def __repr__(self):
-        return '{height}x{width}+{top}+{left}'.format(**self.__dict__)
+        return "{height}x{width}+{top}+{left}".format(**self.__dict__)
 
     def __and__(self, other):
-        """Return the intersection of `self` and `other`.
-        """
+        """Return the intersection of `self` and `other`."""
         overlap_left = max(self.left, other.left)
         overlap_top = max(self.top, other.top)
         overlap_right = min(self.left + self.width, other.left + other.width)
@@ -28,10 +28,12 @@ class Rect:
 
         if overlap_left > overlap_right or overlap_top > overlap_bottom:
             return None
-        return Rect(overlap_top,
-                    overlap_left,
-                    overlap_bottom - overlap_top,
-                    overlap_right - overlap_left)
+        return Rect(
+            overlap_top,
+            overlap_left,
+            overlap_bottom - overlap_top,
+            overlap_right - overlap_left,
+        )
 
     def to_mask(self, height, width, color=True):
         """Generate a zero-one mask from this Rect, viewed as part of a larger
@@ -54,13 +56,14 @@ class Rect:
 
         mask = np.zeros(shape)
 
-        mask[self.top:(self.top + self.height + 1),
-             self.left:(self.left + self.width + 1)] = fill
+        mask[
+            self.top : (self.top + self.height + 1),
+            self.left : (self.left + self.width + 1),
+        ] = fill
 
         return mask.astype(np.uint8)
 
-    def subregion(self, pct_top, pct_left, pct_height, pct_width,
-                  padding=0):
+    def subregion(self, pct_top, pct_left, pct_height, pct_width, padding=0):
         """Return the subregion from
         (pct_top)*100% to (pct_top + pct_height)*100%,
         (pct_left)*100% to (pct_left + pct_width)*100%,

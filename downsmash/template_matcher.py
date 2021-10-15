@@ -14,14 +14,16 @@ LOGGER = logging.getLogger(__name__)
 
 
 class TemplateMatcher:
-    """This class performs template matching on a StreamParser.
-    """
+    """This class performs template matching on a StreamParser."""
 
-    def __init__(self, scales=np.arange(0.5, 1.0, 0.03),
-                 max_distance=14,
-                 criterion=cv2.TM_CCOEFF_NORMED,
-                 worst_match=0.75,
-                 debug=False):
+    def __init__(
+        self,
+        scales=np.arange(0.5, 1.0, 0.03),
+        max_distance=14,
+        criterion=cv2.TM_CCOEFF_NORMED,
+        worst_match=0.75,
+        debug=False,
+    ):
         self.scales = scales
         self.max_distance = max_distance
 
@@ -29,8 +31,9 @@ class TemplateMatcher:
         self.worst_match = worst_match
         self.debug = debug
 
-    def match(self, feature, scene, mask=None, scale=None, crop=True,
-              cluster=True):
+    def match(
+        self, feature, scene, mask=None, scale=None, crop=True, cluster=True
+    ):
         """Find the location of _feature_ in _scene_, if there is one.
 
         Return a tuple containing the best match scale and the best match
@@ -70,8 +73,10 @@ class TemplateMatcher:
             scene_working = scene.copy()
             scene_working *= mask.to_mask()
         elif isinstance(mask, Rect):
-            scene_working = scene[mask.top:(mask.top + mask.height),
-                                  mask.left:(mask.left + mask.width)].copy()
+            scene_working = scene[
+                mask.top : (mask.top + mask.height),
+                mask.left : (mask.left + mask.width),
+            ].copy()
         else:
             scene_working = scene.copy()
 
@@ -84,8 +89,9 @@ class TemplateMatcher:
             scaled_feature = cv2.resize(feature, (0, 0), fx=scale, fy=scale)
 
             # Peaks in matchTemplate are good candidates.
-            peak_map = cv2.matchTemplate(scene_working, scaled_feature,
-                                         self.criterion)
+            peak_map = cv2.matchTemplate(
+                scene_working, scaled_feature, self.criterion
+            )
 
             if self.criterion in (cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED):
                 best_val, _, best_loc, _ = cv2.minMaxLoc(peak_map)
@@ -97,28 +103,39 @@ class TemplateMatcher:
             good_points = list(zip(*good_points))
 
             if self.debug:
-                LOGGER.warning("%f %f %f %s %s", scale, self.worst_match,
-                               best_val, best_loc, good_points)
+                LOGGER.warning(
+                    "%f %f %f %s %s",
+                    scale,
+                    self.worst_match,
+                    best_val,
+                    best_loc,
+                    good_points,
+                )
 
-                cv2.imshow('edges', scene_working)
+                cv2.imshow("edges", scene_working)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
             if cluster:
-                clusters = get_clusters(good_points,
-                                        max_distance=self.max_distance)
+                clusters = get_clusters(
+                    good_points, max_distance=self.max_distance
+                )
             else:
                 clusters = [(pt,) for pt in good_points]
 
             # TODO Break these down into more comprehensible comprehensions.
-            match_candidates = [max(clust, key=lambda pt: peak_map[pt])
-                                for clust in clusters]
+            match_candidates = [
+                max(clust, key=lambda pt: peak_map[pt]) for clust in clusters
+            ]
             if isinstance(mask, Rect):
-                match_candidates = [((peak[0] + mask.top, peak[1] + mask.left),
-                                     peak_map[peak])
-                                    for peak in match_candidates]
+                match_candidates = [
+                    ((peak[0] + mask.top, peak[1] + mask.left), peak_map[peak])
+                    for peak in match_candidates
+                ]
             else:
-                match_candidates = [(peak, peak_map[peak]) for peak in match_candidates]
+                match_candidates = [
+                    (peak, peak_map[peak]) for peak in match_candidates
+                ]
 
         return (scale, match_candidates)
 

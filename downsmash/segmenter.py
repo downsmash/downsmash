@@ -19,26 +19,37 @@ class Segmenter:
         self.interval = config.get("polling_interval", 5)
 
         self.frames = self.stream.sample_frames(interval=self.interval)
-        self.confidence = [(time, self.calculate_frame_confidence(scene, PERCENT, view.ports))
-                           for (time, scene) in self.frames]
+        self.confidence = [
+            (time, self.calculate_frame_confidence(scene, PERCENT, view.ports))
+            for (time, scene) in self.frames
+        ]
 
-        self.confidence = pd.DataFrame(self.confidence, columns=['time', 'conf'])
+        self.confidence = pd.DataFrame(
+            self.confidence, columns=["time", "conf"]
+        )
 
     def calculate_frame_confidence(self, scene, feature, rois):
         """Estimate the maximum correlation of any ROI in _scene_
         to the unscaled _feature_.
         """
 
-        scaled_feature = cv2.resize(feature, (0, 0), fx=self.view.scale, fy=self.view.scale)
+        scaled_feature = cv2.resize(
+            feature, (0, 0), fx=self.view.scale, fy=self.view.scale
+        )
         scaled_feature = cv2.Laplacian(scaled_feature, cv2.CV_8U)
 
         percent_corrs = []
         for roi in rois:
             if roi is not None:
-                scene_roi = scene[roi.top:(roi.top + roi.height), roi.left:(roi.left + roi.width)]
+                scene_roi = scene[
+                    roi.top : (roi.top + roi.height),
+                    roi.left : (roi.left + roi.width),
+                ]
                 scene_roi = cv2.Laplacian(scene_roi, cv2.CV_8U)
 
-                corr_map = cv2.matchTemplate(scene_roi, scaled_feature, cv2.TM_CCOEFF_NORMED)
+                corr_map = cv2.matchTemplate(
+                    scene_roi, scaled_feature, cv2.TM_CCOEFF_NORMED
+                )
                 _, max_corr, _, _ = cv2.minMaxLoc(corr_map)
                 percent_corrs.append(max_corr)
         return max(percent_corrs)
@@ -47,7 +58,7 @@ class Segmenter:
         """Return an approximate threshold value to decide whether a frame
         contains Melee.
         """
-        confs = self.confidence['conf']
+        confs = self.confidence["conf"]
 
         return compute_minimum_kernel_density(confs)
 
@@ -57,21 +68,35 @@ class Segmenter:
 
         """
         # Perform median smoothing.
-        self.confidence['median'] = self.confidence['conf'].rolling(5).median()
-        self.confidence['median'] = self.confidence['median'].fillna(method='bfill')
-        self.confidence['median'] = self.confidence['median'].fillna(method='ffill')
+        self.confidence["median"] = self.confidence["conf"].rolling(5).median()
+        self.confidence["median"] = self.confidence["median"].fillna(
+            method="bfill"
+        )
+        self.confidence["median"] = self.confidence["median"].fillna(
+            method="ffill"
+        )
 
         # Now classify as Melee/no Melee based on whether we are greater/less
         # than the threshold.
-        groups = itertools.groupby(self.confidence.iterrows(),
-                                   lambda row: row[1]['median'] > threshold)
+        groups = itertools.groupby(
+            self.confidence.iterrows(),
+            lambda row: row[1]["median"] > threshold,
+        )
         groups = [(k, list(g)) for k, g in groups]
-        segments = [(self.interval * g[0][0],
-                     self.interval * g[-1][0]) for k, g in groups if k]
+        segments = [
+            (self.interval * g[0][0], self.interval * g[-1][0])
+            for k, g in groups
+            if k
+        ]
 
         for idx, segment in enumerate(segments):
             start, end = segment
-            LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
+            LOGGER.warning(
+                "Estimated game %d is %s-%s",
+                idx + 1,
+                timeify(start),
+                timeify(end),
+            )
 
         return segments
 
@@ -81,7 +106,12 @@ class Segmenter:
             start = self.find_segment_boundary(start, 0.5)
             end = self.find_segment_boundary(end, 0.5)
             segments[idx] = (start, end)
-            LOGGER.warning("Estimated game %d is %s-%s", idx + 1, timeify(start), timeify(end))
+            LOGGER.warning(
+                "Estimated game %d is %s-%s",
+                idx + 1,
+                timeify(start),
+                timeify(end),
+            )
 
         return segments
 
@@ -93,10 +123,13 @@ class Segmenter:
         """
 
         threshold = self.get_threshold()
+
         def conf_at(time):
             scene = self.stream.get_frame(time)
             if scene is not None:
-                conf = self.calculate_frame_confidence(scene, PERCENT, self.view.ports)
+                conf = self.calculate_frame_confidence(
+                    scene, PERCENT, self.view.ports
+                )
                 return conf - threshold
             return 0 - threshold
 

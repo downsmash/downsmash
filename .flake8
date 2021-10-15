@@ -1,0 +1,2 @@
+[flake8]
+extend-ignore=E203 # Differs from PEP8, see https://github.com/github/super-linter/issues/709
