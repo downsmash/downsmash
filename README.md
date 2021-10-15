@@ -1,28 +1,23 @@
 <div align="center">
 <img alt="Downsmash" src="https://raw.githubusercontent.com/downsmash/downsmash/master/downsmash.png" />
+<br />
+<span>Downsmash turns Melee into data.</span>
 </div>
 
-Part of the [Downsmash](downsma.sh) project.
-
-Watches a video of a Melee set and determines the (approximate) start and end times of contiguous Melee.
-
-## Usage
-Segment an individual VOD:
+# Installation
+```sh
+$ pip install downsmash
 ```
-$ python segment.py [vod.mp4] -o [output.json]  # write to output.json
-$ python segment.py [vod.mp4] --stdout          # write to stdout
-```
-Batch-process a set of VODs:
-```
-$ echo [youtubeID] | python batch.py
-$ sort -R batch/videos_melee.tsv | head -n10 | cut -f1 | python batch.py
+or
+```sh
+$ easy_install downsmash
 ```
 
-## Requirements
-  - cv2
-  - numpy
-  - pandas
-  - scipy
-  - scikit-learn
-  - sqlalchemy
-  - youtube_dl
+# Usage
+```python
+from downsmash.watcher import watch
+watch('melee_vod.mp4')
+```
+
+# Contributing
+~Downsmash provides a flexible plugin framework that I haven't written yet.~
