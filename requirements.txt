@@ -7,4 +7,3 @@ numpy
 pandas
 scikit-learn
 scipy
-youtube_dl
