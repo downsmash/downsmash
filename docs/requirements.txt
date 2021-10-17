@@ -1,1 +1,6 @@
 myst-parser
+
+numpy
+pandas
+scikit-learn
+scipy
