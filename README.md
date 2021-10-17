@@ -24,6 +24,3 @@ You will also probably want to use a video downloader such as `yt-dlp`.
 from downsmash.watcher import watch
 watch('melee_vod.mp4')
 ```
-
-# Contributing
-~Downsmash provides a flexible plugin framework that I haven't written yet.~
