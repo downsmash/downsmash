@@ -1,9 +1,7 @@
 black
 coverage
 flake8
-myst-parser
 pytest
-sphinx
 
 numpy
 pandas
