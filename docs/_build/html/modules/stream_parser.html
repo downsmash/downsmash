@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Reading Video &#8212; downsmash 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Template Matching" href="template_matcher.html" />
+    <link rel="prev" title="Quickstart" href="../usage/quickstart.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-downsmash.stream_parser">
+<span id="reading-video"></span><h1>Reading Video<a class="headerlink" href="#module-downsmash.stream_parser" title="Permalink to this headline">¶</a></h1>
+<p>Module for StreamParser class.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="downsmash.stream_parser.StreamParser">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">downsmash.stream_parser.</span></span><span class="sig-name descname"><span class="pre">StreamParser</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#downsmash.stream_parser.StreamParser" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class is effectively a wrapper around OpenCV’s VideoCapture class
+that provides utility functions for parsing video streams.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="downsmash.stream_parser.StreamParser.get_frame">
+<span class="sig-name descname"><span class="pre">get_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#downsmash.stream_parser.StreamParser.get_frame" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempt to retrieve a frame from <cite>self.stream</cite>.</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt><cite>time</cite>: If set, get the frame nearest to this timestamp.</dt><dd><p>If unset, get the next frame in sequence.</p>
+</dd>
+</dl>
+</li>
+<li><p><cite>color</cite>: If false, convert the frame from color to grayscale.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="downsmash.stream_parser.StreamParser.locate">
+<span class="sig-name descname"><span class="pre">locate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">scenes</span></em>, <em class="sig-param"><span class="pre">feature</span></em>, <em class="sig-param"><span class="pre">roi=None</span></em>, <em class="sig-param"><span class="pre">matcher=&lt;downsmash.template_matcher.TemplateMatcher</span> <span class="pre">object&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#downsmash.stream_parser.StreamParser.locate" title="Permalink to this definition">¶</a></dt>
+<dd><p>asdfkjasdlfjas</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="downsmash.stream_parser.StreamParser.sample_frames">
+<span class="sig-name descname"><span class="pre">sample_frames</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fuzz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#downsmash.stream_parser.StreamParser.sample_frames" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate frames based on the parameters given.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">downsmash</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../usage/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../usage/quickstart.html">Quickstart</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Reading Video</a></li>
+<li class="toctree-l1"><a class="reference internal" href="template_matcher.html">Template Matching</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../usage/quickstart.html" title="previous chapter">Quickstart</a></li>
+      <li>Next: <a href="template_matcher.html" title="next chapter">Template Matching</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2021, S. Verona Malone.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.2.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/modules/stream_parser.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

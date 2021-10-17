@@ -1,0 +1,10 @@
+# Installation
+
+This should work on Windows, since `opencv-python` packages its own OpenCV. I cannot guarantee this, though, and I cannot help Windows users with configuration.
+
+```bash
+$ git clone https://github.com/downsmash/downsmash
+$ pip install -r requirements.txt
+```
+
+You will also probably want to use a video downloader such as `yt-dlp`.
